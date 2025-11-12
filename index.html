@@ -587,6 +587,36 @@
   </div>
 </div>
 
+<div id="inputModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="inputModalTitle">
+  <div class="modal-card">
+    <h3 id="inputModalTitle">Enter value</h3>
+    <form id="inputModalForm">
+      <label for="inputModalField" id="inputModalLabel">Value</label>
+      <input id="inputModalField" type="text" autocomplete="off" required>
+      <div class="modal-actions">
+        <button type="button" id="inputModalCancel">Cancel</button>
+        <button type="submit" id="inputModalConfirm">Save</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div id="textFileModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="textFileModalTitle">
+  <div class="modal-card">
+    <h3 id="textFileModalTitle">New text file</h3>
+    <form id="textFileForm">
+      <label for="textFileName">Name</label>
+      <input id="textFileName" type="text" required maxlength="120" autocomplete="off" placeholder="e.g. notes.txt">
+      <label for="textFileContent">Content</label>
+      <textarea id="textFileContent" rows="6" placeholder="Start typing..."></textarea>
+      <div class="modal-actions">
+        <button type="button" id="textFileCancel">Cancel</button>
+        <button type="submit" id="textFileCreate">Create</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div id="photoViewer" class="photo-viewer hidden" role="dialog" aria-modal="true" aria-labelledby="viewerTitle">
   <div class="viewer-frame">
     <div class="viewer-top">
@@ -784,6 +814,18 @@ const mediaSelectionGroup = document.getElementById('mediaSelectionActions');
 const albumSelectionGroup = document.getElementById('albumSelectionActions');
 const copyAlbumsBtn = document.getElementById('copyAlbumsBtn');
 const deleteAlbumsBtn = document.getElementById('deleteAlbumsBtn');
+const inputModal = document.getElementById('inputModal');
+const inputModalTitle = document.getElementById('inputModalTitle');
+const inputModalLabel = document.getElementById('inputModalLabel');
+const inputModalField = document.getElementById('inputModalField');
+const inputModalForm = document.getElementById('inputModalForm');
+const inputModalCancel = document.getElementById('inputModalCancel');
+const inputModalConfirm = document.getElementById('inputModalConfirm');
+const textFileModal = document.getElementById('textFileModal');
+const textFileForm = document.getElementById('textFileForm');
+const textFileNameInput = document.getElementById('textFileName');
+const textFileContentInput = document.getElementById('textFileContent');
+const textFileCancel = document.getElementById('textFileCancel');
 const modal = document.getElementById('albumModal');
 const albumModalTitle = document.getElementById('albumModalTitle');
 const albumForm = document.getElementById('albumForm');
@@ -846,6 +888,8 @@ let visibleMediaIds = [];
 let visibleAlbumIds = [];
 let albumSortMode = 'name-asc';
 let albumViewMode = 'grid';
+let inputModalResolver = null;
+let textFileModalResolver = null;
 const SETTINGS_KEY = 'pwa-photo-gallery-settings';
 const defaultSettings = { namingScheme: '{{original}}', counter: 1, theme: 'dark' };
 let settings = loadSettings();
@@ -953,6 +997,74 @@ function renderThemes() {
 
 applyTheme(settings.theme || defaultSettings.theme, false);
 renderThemes();
+
+function openInputModal({ title = 'Input', label = 'Value', value = '', placeholder = '', confirmText = 'Save', required = true } = {}) {
+  if (!inputModal) return Promise.resolve(null);
+  inputModalTitle.textContent = title;
+  inputModalLabel.textContent = label;
+  inputModalField.value = value || '';
+  inputModalField.placeholder = placeholder || '';
+  inputModalField.required = required;
+  inputModalConfirm.textContent = confirmText || 'Save';
+  inputModal.classList.remove('hidden');
+  setTimeout(() => inputModalField.focus(), 20);
+  return new Promise((resolve) => {
+    inputModalResolver = resolve;
+  });
+}
+
+function closeInputModal(result) {
+  if (inputModal) inputModal.classList.add('hidden');
+  if (inputModalResolver) {
+    const output = typeof result === 'string' ? result.trim() : result;
+    inputModalResolver(output ?? null);
+    inputModalResolver = null;
+  }
+}
+
+inputModalCancel?.addEventListener('click', () => closeInputModal(null));
+inputModal?.addEventListener('click', (e) => { if (e.target === inputModal) closeInputModal(null); });
+inputModalForm?.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const value = inputModalField.value.trim();
+  if (inputModalField.required && !value) {
+    inputModalField.focus();
+    return;
+  }
+  closeInputModal(value);
+});
+
+function openTextFileModal(defaultName = 'notes.txt') {
+  if (!textFileModal) return Promise.resolve(null);
+  textFileNameInput.value = defaultName || 'notes.txt';
+  textFileContentInput.value = '';
+  textFileModal.classList.remove('hidden');
+  setTimeout(() => textFileNameInput.focus(), 20);
+  return new Promise((resolve) => {
+    textFileModalResolver = resolve;
+  });
+}
+
+function closeTextFileModal(result) {
+  if (textFileModal) textFileModal.classList.add('hidden');
+  if (textFileModalResolver) {
+    textFileModalResolver(result ?? null);
+    textFileModalResolver = null;
+  }
+}
+
+textFileCancel?.addEventListener('click', () => closeTextFileModal(null));
+textFileModal?.addEventListener('click', (e) => { if (e.target === textFileModal) closeTextFileModal(null); });
+textFileForm?.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = textFileNameInput.value.trim();
+  if (!name) {
+    textFileNameInput.focus();
+    return;
+  }
+  closeTextFileModal({ name, content: textFileContentInput.value || '' });
+});
+
 (async () => {
   db = await idbOpen(DB_NAME, DB_VERSION);
   await ensureFolderSeed();
@@ -1390,10 +1502,16 @@ async function deleteAlbumsByIds(ids) {
 
 async function copySelectedAlbums() {
   if (!selectedAlbums.size) return alert('Select at least one album.');
-  const name = prompt('Name for the new album', 'Copied Album');
-  if (!name) return;
+  const name = await openInputModal({
+    title: 'Copy albums',
+    label: 'New album name',
+    value: 'Copied Album',
+    confirmText: 'Create'
+  });
+  const cleanName = (name || '').trim();
+  if (!cleanName) return;
   const created = Date.now();
-  const newAlbumId = await idbAdd(db, COLLECTION_STORE, { name, created });
+  const newAlbumId = await idbAdd(db, COLLECTION_STORE, { name: cleanName, created });
   const combined = new Set();
   selectedAlbums.forEach(albumId => {
     const members = albumMembership.get(albumId);
@@ -2414,11 +2532,9 @@ function triggerFileSelect(accept) {
 }
 
 async function handleTextFileCreate() {
-  const defaultName = 'notes.txt';
-  const name = prompt('File name', defaultName);
-  if (!name) return;
-  const content = prompt('Enter text', '');
-  if (content === null) return;
+  const result = await openTextFileModal('notes.txt');
+  if (!result) return;
+  const { name, content } = result;
   const blob = new Blob([content], { type: 'text/plain' });
   await addInlineMedia({
     name,
@@ -2609,6 +2725,8 @@ document.addEventListener('keydown', (e) => {
     if (!modal.classList.contains('hidden')) closeModal();
     if (!settingsModal.classList.contains('hidden')) closeSettings();
     if (!photoViewer.classList.contains('hidden')) closeViewer();
+    if (!inputModal.classList.contains('hidden')) closeInputModal(null);
+    if (!textFileModal.classList.contains('hidden')) closeTextFileModal(null);
   }
   if (!photoViewer.classList.contains('hidden')) {
     if (e.key === 'ArrowRight') { e.preventDefault(); navigateViewer(1); }
