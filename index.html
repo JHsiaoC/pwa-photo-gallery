@@ -1214,8 +1214,7 @@ function setActiveFolder(value) {
     target = Number(value);
   }
   currentFolder = target;
-  if (driveSearchInput) driveSearchInput.value = '';
-  driveSearchTerm = '';
+  resetDriveSearch();
   selectedFolders.clear();
   selectedMedia.clear();
   selectedAlbums.clear();
@@ -1710,6 +1709,18 @@ if (driveSearchInput) {
   });
 }
 
+function resetDriveSearch(triggerInput = false) {
+  driveSearchTerm = '';
+  if (driveSearchInput) {
+    driveSearchInput.value = '';
+    if (triggerInput) {
+      driveSearchInput.dispatchEvent(new Event('input', { bubbles: true }));
+      return;
+    }
+  }
+  renderGallery();
+}
+
 primaryAddBtn?.addEventListener('click', (e) => {
   e.stopPropagation();
   toggleMenu(addMenu, primaryAddBtn);
@@ -1865,9 +1876,7 @@ async function addFiles(fileList) {
     });
   }
   await refreshGallery();
-  if (driveSearchInput) driveSearchInput.value = '';
-  driveSearchTerm = '';
-  renderGallery();
+  resetDriveSearch(true);
 }
 
 async function addInlineMedia({ name, blob, type }) {
@@ -1891,9 +1900,7 @@ async function addInlineMedia({ name, blob, type }) {
     folderId: typeof currentFolder === 'number' ? currentFolder : null
   });
   await refreshGallery();
-  if (driveSearchInput) driveSearchInput.value = '';
-  driveSearchTerm = '';
-  renderGallery();
+  resetDriveSearch(true);
 }
 
 function isSupportedFile(file) {
