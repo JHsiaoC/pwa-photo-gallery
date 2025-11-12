@@ -19,10 +19,13 @@
       --sidebar:#0b1220;
     }
     * { box-sizing: border-box; }
+    :root {
+      --bg-pattern: radial-gradient(circle at top, rgba(56,189,248,.25), transparent 45%);
+    }
     body {
       margin: 0;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      background: radial-gradient(circle at top, rgba(56,189,248,.25), transparent 45%), var(--bg);
+      background: var(--bg-pattern), var(--bg);
       color: var(--text);
       min-height: 100vh;
     }
@@ -135,6 +138,7 @@
       display:inline-block;
       vertical-align:middle;
       pointer-events:none;
+      filter: invert(1) brightness(1.6);
     }
     .menu-icon { width:18px; height:18px; margin-right:8px; display:inline-flex; }
     .list-icon { width:20px; height:20px; margin-right:10px; display:inline-flex; align-items:center; justify-content:center; }
@@ -142,16 +146,16 @@
     .search-bar .search-icon { position:absolute; top:50%; left:14px; transform:translateY(-50%); width:18px; height:18px; object-fit:contain; }
     .ellipsis-icon { font-size:16px; letter-spacing:2px; white-space:nowrap; display:inline-block; transform:translateY(-1px); }
     .circle-check {
-      width:18px;
-      height:18px;
+      width:22px;
+      height:22px;
       border-radius:50%;
       border:1.5px solid rgba(148,163,184,.7);
       display:inline-flex;
       align-items:center;
       justify-content:center;
-      font-size:11px;
       margin-right:8px;
     }
+    .circle-check img { width:14px; height:14px; object-fit:contain; filter:invert(1) brightness(1.6); }
     .dropdown { position:relative; }
     .dropdown-menu { position:absolute; top:48px; right:0; background:rgba(11,17,31,.95); border:1px solid rgba(148,163,184,.2); border-radius:16px; min-width:220px; padding:8px 0; box-shadow:0 12px 30px rgba(0,0,0,.5); z-index:20; display:none; }
     .dropdown-menu.show { display:block; }
@@ -202,7 +206,8 @@
     .bottom-tabs.action-mode .selection-actions { display:flex; }
     .drive-shell .select-indicator { opacity:0; transition:opacity .2s ease; }
     .drive-shell.selecting .select-indicator { opacity:1; }
-    .album-shell { background: rgba(15,23,42,.75); border-radius: 28px; border:1px solid rgba(148,163,184,.12); box-shadow: 0 20px 60px rgba(0,0,0,.4); padding: 24px; min-height: 60vh; }
+    .album-shell,
+    .theme-shell { background: rgba(15,23,42,.75); border-radius: 28px; border:1px solid rgba(148,163,184,.12); box-shadow: 0 20px 60px rgba(0,0,0,.4); padding: 24px; min-height: 60vh; }
     .photos-header { text-align:center; margin-bottom:16px; }
     #photosHeading { margin:0; font-size:28px; }
     .album-toolbar { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
@@ -233,6 +238,12 @@
     .album-card.new { border:1px dashed rgba(148,163,184,.4); color:var(--muted); }
     .album-card.active { border-color: var(--accent); box-shadow:0 0 0 2px rgba(56,189,248,.4); }
     .album-empty { text-align:center; padding:24px; color:var(--muted); }
+    .theme-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:16px; }
+    .theme-card { border-radius:20px; border:1px solid rgba(148,163,184,.2); padding:18px; background:rgba(15,23,42,.85); display:flex; flex-direction:column; gap:12px; cursor:pointer; transition:border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
+    .theme-card.active { border-color: var(--accent); box-shadow:0 0 0 2px rgba(56,189,248,.3); transform:translateY(-2px); }
+    .theme-preview { border-radius:14px; height:90px; background:#1e293b; position:relative; overflow:hidden; }
+    .theme-preview span { position:absolute; inset:0; opacity:.4; border-radius:inherit; }
+    .theme-meta strong { font-size:16px; }
 
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 12px; margin-top: 18px; }
     .card { position: relative; border-radius: 16px; overflow: hidden; background: var(--card); border: 1px solid rgba(148,163,184,.15); box-shadow: 0 6px 20px rgba(0,0,0,.25); }
@@ -443,12 +454,14 @@
             </div>
           </div>
           <div class="dropdown">
-            <button class="action-btn" id="moreActionsBtn" aria-haspopup="true" aria-expanded="false" aria-label="More actions"><span class="ellipsis-icon">···</span></button>
+            <button class="action-btn" id="moreActionsBtn" aria-haspopup="true" aria-expanded="false" aria-label="More actions">
+              <img src="icons/dots.png" alt="More">
+            </button>
             <div class="dropdown-menu" id="moreMenu">
-              <button data-action="select"><span class="circle-check">✓</span>Select</button>
+              <button data-action="select"><span class="circle-check"><img src="icons/check.png" alt=""></span>Select</button>
               <div class="dropdown-divider"></div>
-              <button data-sort="name-asc"><img src="icons/up-and-down-arrow.png" alt="" class="inline-icon"> Name (A→Z)</button>
-              <button data-sort="name-desc"><img src="icons/up-and-down-arrow.png" alt="" class="inline-icon"> Name (Z→A)</button>
+              <button data-sort="name-asc"><img src="icons/sort-ascending.png" alt="" class="inline-icon"> Name (A→Z)</button>
+              <button data-sort="name-desc"><img src="icons/sort-descending.png" alt="" class="inline-icon"> Name (Z→A)</button>
               <button data-sort="size-desc">⬆️ Largest</button>
               <button data-sort="size-asc">⬇️ Smallest</button>
               <button data-sort="created-desc">🆕 Newest</button>
@@ -484,7 +497,9 @@
         </div>
         <div class="album-actions">
           <div class="dropdown">
-            <button class="action-btn" id="albumMoreBtn" aria-haspopup="true" aria-expanded="false" aria-label="Album actions"><span class="ellipsis-icon">···</span></button>
+            <button class="action-btn" id="albumMoreBtn" aria-haspopup="true" aria-expanded="false" aria-label="Album actions">
+              <img src="icons/dots.png" alt="More">
+            </button>
             <div class="dropdown-menu" id="albumMoreMenu">
               <button data-album-action="delete"><img src="icons/remove.png" alt="" class="inline-icon"> Delete Album</button>
             </div>
@@ -497,6 +512,15 @@
         <div id="albumMedia" class="grid" aria-live="polite"></div>
         <p id="albumMediaEmpty" class="empty">This album is empty.</p>
       </div>
+    </div>
+
+    <div class="theme-shell hidden">
+      <div class="photos-header">
+        <p class="eyebrow">Appearance</p>
+        <h2>Themes</h2>
+      </div>
+      <p style="text-align:center; color:var(--muted); margin-bottom:24px;">Pick a background style for the Drive and Photos tabs.</p>
+      <div id="themeGrid" class="theme-grid"></div>
     </div>
   </main>
 </div>
@@ -564,7 +588,7 @@
   <div class="tab-buttons">
     <button class="active" data-tab="folders">Drive</button>
     <button data-tab="albums">Photos</button>
-    <button data-tab="more">More</button>
+    <button data-tab="themes">Themes</button>
   </div>
   <div class="selection-actions hidden" id="selectionActions">
     <button type="button" id="selectionCancelBtn">Cancel</button>
@@ -702,6 +726,7 @@ const SPECIAL_ALL = 'all';
 const SPECIAL_UNSORTED = 'unsorted';
 const TAB_FOLDERS = 'folders';
 const TAB_ALBUMS = 'albums';
+const TAB_THEMES = 'themes';
 
 let db;
 let folders = [];
@@ -755,8 +780,6 @@ const primaryAddBtn = document.getElementById('primaryAddBtn');
 const moreActionsBtn = document.getElementById('moreActionsBtn');
 const addMenu = document.getElementById('addMenu');
 const moreMenu = document.getElementById('moreMenu');
-const albumMoreBtn = document.getElementById('albumMoreBtn');
-const albumMoreMenu = document.getElementById('albumMoreMenu');
 const driveShellEl = document.querySelector('.drive-shell');
 const driveBackBtn = document.getElementById('driveBackBtn');
 const albumShellEl = document.querySelector('.album-shell');
@@ -766,6 +789,12 @@ const albumMediaPanel = document.getElementById('albumMediaPanel');
 const albumMediaEl = document.getElementById('albumMedia');
 const albumMediaEmptyEl = document.getElementById('albumMediaEmpty');
 const albumBackBtn = document.getElementById('albumBackBtn');
+const albumMoreBtn = document.getElementById('albumMoreBtn');
+const albumMoreMenu = document.getElementById('albumMoreMenu');
+const themeShellEl = document.querySelector('.theme-shell');
+const themeGridEl = document.getElementById('themeGrid');
+renderThemes();
+renderThemes();
 
 let viewerUrl;
 let currentViewList = [];
@@ -779,8 +808,9 @@ let driveSearchTerm = '';
 let visibleFolderIds = [];
 let visibleMediaIds = [];
 const SETTINGS_KEY = 'pwa-photo-gallery-settings';
-const defaultSettings = { namingScheme: '{{original}}', counter: 1 };
+const defaultSettings = { namingScheme: '{{original}}', counter: 1, theme: 'deep-space' };
 let settings = loadSettings();
+applyTheme(settings.theme || defaultSettings.theme, false);
 let chromeHidden = false;
 let isZoomed = false;
 let panX = 0;
@@ -789,6 +819,96 @@ let lastTapTime = 0;
 let tapTimeout;
 const gesture = { active: false, pointerId: null, startX: 0, startY: 0, initialX: 0, initialY: 0, panMode: false, startTime: 0 };
 
+const THEMES = [
+  {
+    id: 'deep-space',
+    name: 'Deep Space',
+    description: 'Original navy gradient',
+    preview: ['#050812', '#0f172a'],
+    vars: {
+      '--bg': '#050812',
+      '--card': '#0f172a',
+      '--muted': '#94a3b8',
+      '--text': '#f1f5f9',
+      '--accent': '#38bdf8',
+      '--accent-strong': '#0ea5e9',
+      '--sidebar': '#0b1220',
+      '--bg-pattern': 'radial-gradient(circle at top, rgba(56,189,248,.25), transparent 45%)'
+    }
+  },
+  {
+    id: 'sunset',
+    name: 'Sunset Bloom',
+    description: 'Warm pink to orange',
+    preview: ['#220016', '#6b112c'],
+    vars: {
+      '--bg': '#20000f',
+      '--card': '#2f0a1b',
+      '--muted': '#f9c6d0',
+      '--text': '#fff4f7',
+      '--accent': '#ff8fb1',
+      '--accent-strong': '#ff5e91',
+      '--sidebar': '#2b0018',
+      '--bg-pattern': 'radial-gradient(circle at top, rgba(255,143,177,.35), transparent 45%)'
+    }
+  },
+  {
+    id: 'aurora',
+    name: 'Aurora Neon',
+    description: 'Teal & purple glow',
+    preview: ['#021f2a', '#162243'],
+    vars: {
+      '--bg': '#011018',
+      '--card': '#061e2b',
+      '--muted': '#8cd9ff',
+      '--text': '#e6f9ff',
+      '--accent': '#5ef1cb',
+      '--accent-strong': '#34d1f6',
+      '--sidebar': '#041421',
+      '--bg-pattern': 'radial-gradient(circle at top, rgba(94,241,203,.35), transparent 45%)'
+    }
+  }
+];
+
+function applyTheme(themeId, persist = false) {
+  const theme = THEMES.find(t => t.id === themeId) || THEMES[0];
+  if (!theme) return;
+  Object.entries(theme.vars).forEach(([key, value]) => {
+    document.documentElement.style.setProperty(key, value);
+  });
+  if (persist) {
+    settings.theme = theme.id;
+    saveSettings();
+  }
+}
+
+function renderThemes() {
+  if (!themeGridEl) return;
+  themeGridEl.innerHTML = '';
+  const activeId = settings.theme || defaultSettings.theme;
+  THEMES.forEach((theme) => {
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'theme-card' + (theme.id === activeId ? ' active' : '');
+    const preview = document.createElement('div');
+    preview.className = 'theme-preview';
+    preview.style.background = `linear-gradient(135deg, ${theme.preview[0]}, ${theme.preview[1]})`;
+    const meta = document.createElement('div');
+    meta.className = 'theme-meta';
+    const title = document.createElement('strong');
+    title.textContent = theme.name;
+    const desc = document.createElement('span');
+    desc.style.color = 'var(--muted)';
+    desc.textContent = theme.description;
+    meta.append(title, desc);
+    card.append(preview, meta);
+    card.addEventListener('click', () => {
+      applyTheme(theme.id, true);
+      renderThemes();
+    });
+    themeGridEl.appendChild(card);
+  });
+}
 (async () => {
   db = await idbOpen(DB_NAME, DB_VERSION);
   await ensureFolderSeed();
@@ -1094,8 +1214,12 @@ function setActiveTab(tab) {
   tabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
   driveShellEl?.classList.toggle('hidden', tab !== TAB_FOLDERS);
   albumShellEl?.classList.toggle('hidden', tab !== TAB_ALBUMS);
+  themeShellEl?.classList.toggle('hidden', tab !== TAB_THEMES);
   if (tab !== TAB_FOLDERS && selectionMode) {
     toggleSelectionMode(false);
+  }
+  if (tab === TAB_THEMES) {
+    albumMoreBtn?.classList.add('hidden');
   }
   updateHeader();
   renderFolderList();
@@ -1111,6 +1235,9 @@ tabButtons.forEach(btn => btn.addEventListener('click', () => {
       break;
     case TAB_ALBUMS:
       setActiveTab(TAB_ALBUMS);
+      break;
+    case TAB_THEMES:
+      setActiveTab(TAB_THEMES);
       break;
     default:
       alert('This tab is coming soon.');
@@ -1719,6 +1846,16 @@ async function refreshGallery() {
 
 function renderGallery() {
   const isDrive = activeTab === TAB_FOLDERS;
+  if (activeTab === TAB_THEMES) {
+    driveItemsEl.innerHTML = '';
+    document.getElementById('emptyState')?.classList.add('hidden');
+    albumMediaEl.innerHTML = '';
+    albumMediaPanel?.classList.add('hidden');
+    albumBackBtn?.classList.add('hidden');
+    albumMoreBtn?.classList.add('hidden');
+    updateSelectionChrome();
+    return;
+  }
   const container = isDrive ? driveItemsEl : albumMediaEl;
   if (!container) return;
   const driveEmpty = document.getElementById('emptyState');
