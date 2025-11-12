@@ -168,6 +168,7 @@
     .grid.list-view { display:flex; flex-direction:column; }
     .grid.list-view .card { display:flex; gap:16px; height:auto; }
     .grid.list-view .card img, .grid.list-view .card video { width:140px; height:90px; border-radius:16px; }
+    .grid.list-view .text-card { width:140px; height:90px; }
     .bottom-tabs { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:rgba(11,17,31,.9); border:1px solid rgba(148,163,184,.2); border-radius:999px; padding:10px 18px; display:flex; gap:12px; z-index:30; box-shadow:0 10px 40px rgba(0,0,0,.5); }
     .bottom-tabs button { background:none; border:none; color:var(--muted); font-weight:600; padding:6px 14px; border-radius:999px; cursor:pointer; }
     .bottom-tabs button.active { background:rgba(56,189,248,.12); color:var(--text); }
@@ -193,6 +194,20 @@
     }
     .meta { display:flex; align-items:center; justify-content: space-between; gap:8px; padding: 8px 10px; font-size: 12px; color: var(--muted); }
     .chip { padding: 3px 8px; border-radius: 999px; background: rgba(56,189,248,.12); color: var(--text); border:1px solid rgba(56,189,248,.35); font-weight:600; }
+    .text-card {
+      width: 100%;
+      height: 200px;
+      border-radius: 16px;
+      background: rgba(15,23,42,.85);
+      color: var(--muted);
+      padding: 16px;
+      overflow: hidden;
+      display:flex;
+      align-items:flex-start;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+    }
     .empty { text-align:center; color: var(--muted); padding: 60px 16px; border: 1px dashed rgba(148,163,184,.25); border-radius: 18px; margin-top: 24px; }
     .empty strong { color: var(--text); }
 
@@ -355,8 +370,7 @@
     <h1>📸 My Photo Album</h1>
     <div class="spacer"></div>
     <div class="toolbar">
-      <label class="btn" for="fileInput">Add Media</label>
-      <input id="fileInput" type="file" accept="image/*,video/*" multiple>
+      <input id="fileInput" type="file" accept="image/*,video/*" multiple style="display:none">
       <button id="settingsBtn" type="button">Settings</button>
       <button id="installBtn" class="hidden">Install</button>
       <button id="exportBtn">Export (.zip)</button>
@@ -372,11 +386,6 @@
         <p class="eyebrow">Collection</p>
         <h2 id="activeAlbumTitle">Drive</h2>
       </div>
-      <div class="view-tabs">
-        <button type="button" class="tab-btn active" data-tab="folders">Drive</button>
-        <button type="button" class="tab-btn" data-tab="albums">Albums</button>
-        <button type="button" class="tab-btn" data-tab="starred">Starred</button>
-      </div>
     </div>
 
     <div class="drive-shell">
@@ -384,8 +393,7 @@
         <div class="dropdown">
           <button class="action-btn" id="primaryAddBtn" aria-haspopup="true" aria-expanded="false">＋</button>
           <div class="dropdown-menu" id="addMenu">
-            <button data-add="photos">📷 Import from Photos</button>
-            <button data-add="files">📁 Import from Files</button>
+            <button data-add="import">📥 Import Media</button>
             <button data-add="folder">🗂️ New Folder</button>
             <button data-add="text">📝 New Text File</button>
           </div>
@@ -443,7 +451,7 @@
           Everything stays on this device (IndexedDB). Works offline.
         </p>
         <div id="dropzone" class="dropzone">
-          Drag & drop photos or videos here or use <strong>Add Media</strong> — they go to <strong id="dropTargetLabel">Main Library</strong>.
+          Drag & drop media here or use the <strong>＋</strong> menu — files go to <strong id="dropTargetLabel">Main Library</strong>.
         </div>
       </div>
     </div>
@@ -509,10 +517,10 @@
 </div>
 
 <nav class="bottom-tabs">
-  <button class="active">Drive</button>
-  <button>Photos</button>
-  <button>Albums</button>
-  <button>More</button>
+  <button class="active" data-tab="folders">Drive</button>
+  <button data-tab="photos">Photos</button>
+  <button data-tab="albums">Albums</button>
+  <button data-tab="more">More</button>
 </nav>
 
 <script>
@@ -637,14 +645,12 @@ const folderSelectEl = document.getElementById('folderTarget');
 const albumSelectEl = document.getElementById('albumSelect');
 const folderControlsEl = document.getElementById('folderControls');
 const albumControlsEl = document.getElementById('albumControls');
-const tabButtons = document.querySelectorAll('[data-tab]');
+const tabButtons = document.querySelectorAll('.bottom-tabs button[data-tab]');
 const modal = document.getElementById('albumModal');
 const albumModalTitle = document.getElementById('albumModalTitle');
 const albumForm = document.getElementById('albumForm');
 const albumInput = document.getElementById('albumName');
 const albumCancel = document.getElementById('albumCancel');
-const newFolderBtn = document.getElementById('newFolderBtn');
-const newAlbumBtn = document.getElementById('newAlbumBtn');
 const settingsBtn = document.getElementById('settingsBtn');
 const settingsModal = document.getElementById('settingsModal');
 const settingsForm = document.getElementById('settingsForm');
@@ -674,7 +680,7 @@ const primaryAddBtn = document.getElementById('primaryAddBtn');
 const moreActionsBtn = document.getElementById('moreActionsBtn');
 const addMenu = document.getElementById('addMenu');
 const moreMenu = document.getElementById('moreMenu');
-const bottomTabButtons = document.querySelectorAll('.bottom-tabs button');
+const driveShellEl = document.querySelector('.drive-shell');
 
 let viewerUrl;
 let currentViewList = [];
@@ -879,6 +885,7 @@ function setActiveFolder(value) {
   setActiveTab(TAB_FOLDERS);
   if (!photoViewer.classList.contains('hidden')) closeViewer();
   renderFolderList();
+  renderDriveFolders();
   updateHeader();
   renderGallery();
 }
@@ -1000,11 +1007,17 @@ function setActiveTab(tab) {
 
 tabButtons.forEach(btn => btn.addEventListener('click', () => {
   const tab = btn.dataset.tab;
-  if (tab === 'starred') {
-    alert('Starred view coming soon.');
-    return;
+  switch (tab) {
+    case TAB_FOLDERS:
+      setActiveTab(TAB_FOLDERS);
+      break;
+    case TAB_ALBUMS:
+      setActiveTab(TAB_ALBUMS);
+      break;
+    default:
+      alert('This tab is coming soon.');
+      break;
   }
-  setActiveTab(tab);
 }));
 
 folderSelectEl?.addEventListener('change', updateDropHint);
@@ -1079,9 +1092,6 @@ function updateNamingPreview() {
 }
 
 namingInput?.addEventListener('input', updateNamingPreview);
-
-newFolderBtn?.addEventListener('click', () => openCreateModal('folder'));
-newAlbumBtn?.addEventListener('click', () => openCreateModal('album'));
 
 albumCancel?.addEventListener('click', closeModal);
 modal?.addEventListener('click', (e) => {
@@ -1191,13 +1201,6 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('.dropdown')) closeMenus();
 });
 
-bottomTabButtons.forEach((btn, idx) => {
-  btn.addEventListener('click', () => {
-    if (idx === 0) return;
-    alert('This tab is coming soon.');
-  });
-});
-
 const DB_READY = (async () => {
   while (!db) await new Promise(r => setTimeout(r, 50));
 })();
@@ -1242,6 +1245,29 @@ async function addFiles(fileList) {
       folderId: targetFolder
     });
   }
+  await refreshGallery();
+}
+
+async function addInlineMedia({ name, blob, type }) {
+  await DB_READY;
+  const created = Date.now();
+  const pseudoFile = { name, type, lastModified: created };
+  const safeName = generateFileName(pseudoFile);
+  const textPreview = type === 'text/plain' ? (await blob.text()).slice(0, 200) : '';
+  await idbAdd(db, STORE, {
+    blob,
+    name: safeName,
+    type,
+    created,
+    captured: created,
+    width: 0,
+    height: 0,
+    duration: 0,
+    kind: type.startsWith('video/') ? 'video' : type.startsWith('image/') ? 'image' : 'text',
+    size: blob.size || 0,
+    preview: textPreview,
+    folderId: folderSelectEl?.value ? Number(folderSelectEl.value) : null
+  });
   await refreshGallery();
 }
 
@@ -1401,6 +1427,7 @@ function renderGallery() {
   list.forEach((item, idx) => {
     const url = URL.createObjectURL(item.blob);
     const isVideo = item.kind === 'video' || item.type?.startsWith('video/');
+    const isText = item.kind === 'text' || item.type === 'text/plain';
     const card = document.createElement('div');
     card.className = 'card';
     let mediaEl;
@@ -1417,6 +1444,11 @@ function renderGallery() {
       flag.className = 'media-flag';
       flag.textContent = '🎬 Video';
       card.appendChild(flag);
+    } else if (isText) {
+      URL.revokeObjectURL(url);
+      mediaEl = document.createElement('div');
+      mediaEl.className = 'text-card';
+      mediaEl.textContent = item.preview || item.name || 'Text file';
     } else {
       mediaEl = document.createElement('img');
       mediaEl.loading = 'lazy';
@@ -1432,7 +1464,7 @@ function renderGallery() {
     label.textContent = new Date(item.created).toLocaleString();
     const chip = document.createElement('span');
     chip.className = 'chip';
-    chip.textContent = isVideo ? formatDuration(item.duration) : `${item.width}×${item.height}`;
+    chip.textContent = isVideo ? formatDuration(item.duration) : (isText ? 'Text file' : `${item.width}×${item.height}`);
     meta.append(label, chip);
     card.appendChild(meta);
     card.addEventListener('click', () => openViewerAt(idx));
@@ -1645,17 +1677,14 @@ function closeMenus() {
 
 function handleAddAction(action) {
   switch (action) {
-    case 'photos':
-      triggerFileSelect('image/*');
-      break;
-    case 'files':
+    case 'import':
       triggerFileSelect('');
       break;
     case 'folder':
       openCreateModal('folder');
       break;
     case 'text':
-      alert('New text files are coming soon.');
+      handleTextFileCreate();
       break;
     default:
       break;
@@ -1668,6 +1697,20 @@ function triggerFileSelect(accept) {
   input.accept = accept || 'image/*,video/*';
   input.click();
   setTimeout(() => { input.accept = original; }, 0);
+}
+
+async function handleTextFileCreate() {
+  const defaultName = 'notes.txt';
+  const name = prompt('File name', defaultName);
+  if (!name) return;
+  const content = prompt('Enter text', '');
+  if (content === null) return;
+  const blob = new Blob([content], { type: 'text/plain' });
+  await addInlineMedia({
+    name,
+    blob,
+    type: 'text/plain'
+  });
 }
 
 function handleSortSelection(mode) {
