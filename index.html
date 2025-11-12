@@ -126,6 +126,20 @@
     .drive-back-btn.hidden { visibility:hidden; }
     .drive-actions { display:flex; gap:12px; justify-content:flex-end; align-items:center; }
     .action-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; letter-spacing:1px; }
+    .action-btn img,
+    .icon-btn img,
+    .inline-icon {
+      width:18px;
+      height:18px;
+      object-fit:contain;
+      display:inline-block;
+      vertical-align:middle;
+      pointer-events:none;
+    }
+    .menu-icon { width:18px; height:18px; margin-right:8px; display:inline-flex; }
+    .list-icon { width:20px; height:20px; margin-right:10px; display:inline-flex; align-items:center; justify-content:center; }
+    .list-icon img { width:100%; height:100%; object-fit:contain; }
+    .search-bar .search-icon { position:absolute; top:50%; left:14px; transform:translateY(-50%); width:18px; height:18px; object-fit:contain; }
     .ellipsis-icon { font-size:16px; letter-spacing:2px; white-space:nowrap; display:inline-block; transform:translateY(-1px); }
     .circle-check {
       width:18px;
@@ -146,7 +160,6 @@
     .dropdown-divider { height:1px; background:rgba(148,163,184,.2); margin:6px 0; }
     .search-bar { margin:8px 0 18px; position:relative; }
     .search-bar input { width:100%; padding:12px 16px 12px 40px; border-radius:16px; border:1px solid rgba(148,163,184,.25); background:rgba(15,23,42,.85); color:var(--text); font-size:14px; }
-    .search-bar span { position:absolute; top:50%; left:14px; transform:translateY(-50%); color:var(--muted); font-size:16px; }
     .drive-section { margin-top:20px; }
     .drive-section h3 { margin:0 0 12px; font-size:16px; color:var(--muted); text-transform:uppercase; letter-spacing:.2em; }
     .folder-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap:12px; }
@@ -420,11 +433,13 @@
         </div>
         <div class="drive-actions">
           <div class="dropdown">
-            <button class="action-btn" id="primaryAddBtn" aria-haspopup="true" aria-expanded="false" aria-label="Add menu">+</button>
+            <button class="action-btn" id="primaryAddBtn" aria-haspopup="true" aria-expanded="false" aria-label="Add menu">
+              <img src="icons/plus.png" alt="Add">
+            </button>
             <div class="dropdown-menu" id="addMenu">
-              <button data-add="import">📥 Import Media</button>
-              <button data-add="folder">🗂️ New Folder</button>
-              <button data-add="text">📝 New Text File</button>
+              <button data-add="import"><img src="icons/import.png" alt="" class="inline-icon"> Import Media</button>
+              <button data-add="folder"><img src="icons/folder.png" alt="" class="inline-icon"> New Folder</button>
+              <button data-add="text"><img src="icons/edit.png" alt="" class="inline-icon"> New Text File</button>
             </div>
           </div>
           <div class="dropdown">
@@ -432,8 +447,8 @@
             <div class="dropdown-menu" id="moreMenu">
               <button data-action="select"><span class="circle-check">✓</span>Select</button>
               <div class="dropdown-divider"></div>
-              <button data-sort="name-asc">↕️ Name (A→Z)</button>
-              <button data-sort="name-desc">↕️ Name (Z→A)</button>
+              <button data-sort="name-asc"><img src="icons/up-and-down-arrow.png" alt="" class="inline-icon"> Name (A→Z)</button>
+              <button data-sort="name-desc"><img src="icons/up-and-down-arrow.png" alt="" class="inline-icon"> Name (Z→A)</button>
               <button data-sort="size-desc">⬆️ Largest</button>
               <button data-sort="size-asc">⬇️ Smallest</button>
               <button data-sort="created-desc">🆕 Newest</button>
@@ -447,7 +462,7 @@
       </div>
 
       <div class="search-bar">
-        <span>🔍</span>
+        <img src="icons/search.png" alt="" class="search-icon">
         <input id="driveSearch" type="search" placeholder="Search Drive">
       </div>
 
@@ -471,7 +486,7 @@
           <div class="dropdown">
             <button class="action-btn" id="albumMoreBtn" aria-haspopup="true" aria-expanded="false" aria-label="Album actions"><span class="ellipsis-icon">···</span></button>
             <div class="dropdown-menu" id="albumMoreMenu">
-              <button data-album-action="delete">🗑 Delete Album</button>
+              <button data-album-action="delete"><img src="icons/remove.png" alt="" class="inline-icon"> Delete Album</button>
             </div>
           </div>
         </div>
@@ -536,9 +551,9 @@
       <video id="viewerVideo" class="hidden" playsinline></video>
     </div>
     <div class="viewer-actions">
-      <button id="actionMoveFolder" type="button" class="icon-btn" title="Move to folder">📂</button>
-      <button id="actionAddAlbum" type="button" class="icon-btn" title="Add to album">⭐</button>
-      <button id="actionSave" type="button" class="icon-btn" title="Save to device">⬇️</button>
+      <button id="actionMoveFolder" type="button" class="icon-btn" title="Move to folder"><img src="icons/folder.png" alt=""></button>
+      <button id="actionAddAlbum" type="button" class="icon-btn" title="Add to album"><img src="icons/add.png" alt=""></button>
+      <button id="actionSave" type="button" class="icon-btn" title="Save to device"><img src="icons/import.png" alt=""></button>
       <button id="actionInfo" type="button" class="icon-btn" title="Details">ℹ️</button>
       <button id="muteToggle" type="button" class="icon-btn hidden" title="Mute/unmute">🔇</button>
     </div>
@@ -554,10 +569,10 @@
   <div class="selection-actions hidden" id="selectionActions">
     <button type="button" id="selectionCancelBtn">Cancel</button>
     <button type="button" id="selectionAllBtn">Select All</button>
-    <button type="button" data-bulk="move" disabled>📂 Move</button>
-    <button type="button" data-bulk="copy" disabled>📄 Copy</button>
-    <button type="button" data-bulk="delete" disabled>🗑 Delete</button>
-    <button type="button" data-bulk="album" disabled>⭐ Add to album</button>
+    <button type="button" data-bulk="move" disabled><img src="icons/folder.png" alt="" class="inline-icon"> Move</button>
+    <button type="button" data-bulk="copy" disabled><img src="icons/copy.png" alt="" class="inline-icon"> Copy</button>
+    <button type="button" data-bulk="delete" disabled><img src="icons/remove.png" alt="" class="inline-icon"> Delete</button>
+    <button type="button" data-bulk="album" disabled><img src="icons/add.png" alt="" class="inline-icon"> Add to album</button>
   </div>
 </nav>
 
@@ -812,11 +827,11 @@ function renderFolderList() {
     return acc;
   }, {});
   const entries = [
-    { id: SPECIAL_ALL, name: 'All Media', icon: '🗂️', count: photoCache.length },
-    { id: SPECIAL_UNSORTED, name: 'Main Library', icon: '📥', count: counts[SPECIAL_UNSORTED] || 0 }
+    { id: SPECIAL_ALL, name: 'All Media', icon: 'icons/folder.png', count: photoCache.length },
+    { id: SPECIAL_UNSORTED, name: 'Main Library', icon: 'icons/import.png', count: counts[SPECIAL_UNSORTED] || 0 }
   ];
   for (const folder of folders) {
-    entries.push({ id: folder.id, name: folder.name, icon: '📁', count: counts[folder.id] || 0 });
+    entries.push({ id: folder.id, name: folder.name, icon: 'icons/folder.png', count: counts[folder.id] || 0 });
   }
   for (const entry of entries) {
     const btn = document.createElement('button');
@@ -824,8 +839,11 @@ function renderFolderList() {
     btn.className = 'album-item' + (currentFolder === entry.id ? ' active' : '');
     btn.dataset.folder = String(entry.id);
     const icon = document.createElement('span');
-    icon.className = 'album-icon';
-    icon.textContent = entry.icon;
+    icon.className = 'album-icon list-icon';
+    const img = document.createElement('img');
+    img.src = entry.icon;
+    img.alt = '';
+    icon.appendChild(img);
     const meta = document.createElement('div');
     meta.className = 'album-meta';
     const title = document.createElement('strong');
