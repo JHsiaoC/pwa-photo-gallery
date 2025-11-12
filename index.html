@@ -206,78 +206,91 @@
     .photo-viewer {
       position: fixed;
       inset: 0;
-      background: rgba(3,6,15,.92);
+      background: rgba(3,6,15,.95);
       display: flex;
-      flex-direction: column;
       justify-content: center;
       align-items: center;
       z-index: 60;
-      padding: 32px 20px;
+      padding: 0;
       backdrop-filter: blur(6px);
     }
     .photo-viewer .viewer-frame {
-      max-width: min(90vw, 1100px);
-      max-height: 80vh;
       width: 100%;
-      border-radius: 28px;
-      padding: 24px;
-      background: rgba(11,17,31,.9);
-      border: 1px solid rgba(148,163,184,.2);
-      box-shadow: 0 10px 45px rgba(0,0,0,.6);
+      height: 100%;
       display: flex;
       flex-direction: column;
-      gap: 12px;
-    }
-    .photo-viewer img {
-      width: 100%;
-      max-height: 60vh;
-      object-fit: contain;
-      border-radius: 18px;
-      background: #0b1220;
-    }
-    .photo-viewer video {
-      width: 100%;
-      max-height: 60vh;
-      border-radius: 18px;
-      background: #0b1220;
-    }
-    .photo-viewer header {
-      width: 100%;
-      display: flex;
-      justify-content: flex-end;
-      position: static;
-      backdrop-filter: none;
       background: transparent;
       border: none;
-      margin-bottom: 12px;
+      padding: 0;
     }
-    .photo-viewer .viewer-meta {
+    .viewer-top {
       display: flex;
-      flex-wrap: wrap;
       justify-content: space-between;
-      gap: 8px;
-      font-size: 14px;
+      align-items: flex-start;
+      padding: 16px 16px 0;
+      color: var(--text);
+      text-shadow: 0 1px 3px rgba(0,0,0,.6);
+    }
+    .viewer-top-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 13px;
+    }
+    .viewer-top-info strong {
+      font-size: 16px;
+    }
+    .viewer-top-info span {
       color: var(--muted);
+      font-size: 12px;
     }
-    .viewer-nav {
-      display:flex;
-      justify-content:space-between;
-      width:100%;
-      margin-top:8px;
-      gap:12px;
+    .viewer-media {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      touch-action: none;
     }
-    .viewer-nav button {
-      flex:1;
+    .viewer-media img,
+    .viewer-media video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+      transition: transform .2s ease;
     }
-    .mute-btn {
-      display:flex;
-      align-items:center;
-      gap:6px;
-      flex:0 0 auto;
+    .viewer-media img.zoomed,
+    .viewer-media video.zoomed {
+      cursor: grab;
     }
-    .photo-viewer button {
-      border-radius: 999px;
-      padding: 6px 14px;
+    .viewer-actions {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      padding: 16px;
+    }
+    .icon-btn {
+      background: transparent;
+      border: none;
+      color: var(--text);
+      font-size: 22px;
+      padding: 8px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: opacity .2s ease;
+    }
+    .icon-btn:hover {
+      opacity: .8;
+    }
+    .photo-viewer.hide-chrome .viewer-top,
+    .photo-viewer.hide-chrome .viewer-actions {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .photo-viewer.hide-chrome {
+      cursor: none;
     }
 
     .settings-modal .modal-card {
@@ -399,20 +412,23 @@
 </div>
 
 <div id="photoViewer" class="photo-viewer hidden" role="dialog" aria-modal="true" aria-labelledby="viewerTitle">
-  <header>
-    <button id="viewerClose" type="button">Close ✕</button>
-  </header>
   <div class="viewer-frame">
-    <img id="viewerImage" alt="">
-    <video id="viewerVideo" class="hidden" controls playsinline></video>
-    <div class="viewer-meta">
-      <span id="viewerTitle"></span>
-      <span id="viewerDetails"></span>
+    <div class="viewer-top">
+      <div class="viewer-top-info">
+        <strong id="viewerTitle"></strong>
+        <span id="viewerDetails"></span>
+      </div>
+      <button id="viewerClose" type="button" class="icon-btn" title="Close">✕</button>
     </div>
-    <div class="viewer-nav" style="align-items:center;">
-      <button id="muteToggle" type="button" class="mute-btn hidden">Mute</button>
-      <button id="viewerPrev" type="button">← Previous</button>
-      <button id="viewerNext" type="button">Next →</button>
+    <div class="viewer-media" id="viewerMedia">
+      <img id="viewerImage" alt="">
+      <video id="viewerVideo" class="hidden" playsinline></video>
+    </div>
+    <div class="viewer-actions">
+      <button id="actionAddAlbum" type="button" class="icon-btn" title="Add to album">📁</button>
+      <button id="actionSave" type="button" class="icon-btn" title="Save to device">⬇️</button>
+      <button id="actionInfo" type="button" class="icon-btn" title="Details">ℹ️</button>
+      <button id="muteToggle" type="button" class="icon-btn hidden" title="Mute/unmute">🔇</button>
     </div>
   </div>
 </div>
@@ -476,6 +492,14 @@ function idbAdd(db, store, value) {
     tx.onerror = () => reject(tx.error);
   });
 }
+function idbPut(db, store, value) {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, 'readwrite');
+    tx.objectStore(store).put(value);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
 function idbAll(db, store) {
   return new Promise((resolve, reject) => {
     const tx = db.transaction(store, 'readonly');
@@ -528,8 +552,10 @@ const viewerImg = document.getElementById('viewerImage');
 const viewerVideo = document.getElementById('viewerVideo');
 const viewerTitle = document.getElementById('viewerTitle');
 const viewerDetails = document.getElementById('viewerDetails');
-const viewerPrev = document.getElementById('viewerPrev');
-const viewerNext = document.getElementById('viewerNext');
+const viewerMediaEl = document.getElementById('viewerMedia');
+const actionAddAlbum = document.getElementById('actionAddAlbum');
+const actionSave = document.getElementById('actionSave');
+const actionInfo = document.getElementById('actionInfo');
 const muteToggle = document.getElementById('muteToggle');
 let viewerUrl;
 let currentViewList = [];
@@ -540,6 +566,13 @@ let sortAscending = defaultSortAscending[currentSortField] ?? false;
 const SETTINGS_KEY = 'pwa-photo-gallery-settings';
 const defaultSettings = { namingScheme: '{{original}}', counter: 1 };
 let settings = loadSettings();
+let chromeHidden = false;
+let isZoomed = false;
+let panX = 0;
+let panY = 0;
+let lastTapTime = 0;
+let tapTimeout;
+const gesture = { active: false, pointerId: null, startX: 0, startY: 0, initialX: 0, initialY: 0, panMode: false, startTime: 0 };
 
 (async () => {
   db = await idbOpen(DB_NAME, DB_VERSION);
@@ -990,7 +1023,6 @@ function renderGallery() {
   currentViewList = list;
   if (!list.length) {
     empty.classList.remove('hidden');
-    updateViewerNav();
     return;
   }
   empty.classList.add('hidden');
@@ -1038,7 +1070,6 @@ function renderGallery() {
     card.addEventListener('click', () => openViewerAt(idx));
     g.appendChild(card);
   });
-  updateViewerNav();
 }
 
 function sortPhotos(list) {
@@ -1068,7 +1099,6 @@ function openViewerAt(index) {
   if (index < 0 || index >= currentViewList.length) return;
   currentViewerIndex = index;
   viewMedia(currentViewList[index]);
-  updateViewerNav();
 }
 
 function viewMedia(item) {
@@ -1081,6 +1111,8 @@ function viewMedia(item) {
     URL.revokeObjectURL(viewerUrl);
     viewerUrl = null;
   }
+  resetZoom();
+  toggleChrome(false);
   const url = URL.createObjectURL(item.blob);
   viewerUrl = url;
   const isVideo = (item.kind === 'video') || item.type?.startsWith('video/');
@@ -1092,7 +1124,7 @@ function viewMedia(item) {
     viewerVideo.muted = true;
     viewerVideo.play().catch(()=>{});
     muteToggle.classList.remove('hidden');
-    muteToggle.textContent = 'Unmute';
+    muteToggle.textContent = '🔇';
   } else {
     viewerImg.src = url;
     viewerImg.alt = item.name;
@@ -1105,10 +1137,9 @@ function viewMedia(item) {
   photoViewer.classList.remove('hidden');
 }
 
-function updateViewerNav() {
-  if (!viewerPrev || !viewerNext) return;
-  viewerPrev.disabled = currentViewerIndex <= 0;
-  viewerNext.disabled = currentViewerIndex >= currentViewList.length - 1;
+function getCurrentItem() {
+  if (currentViewerIndex < 0) return null;
+  return currentViewList[currentViewerIndex] || null;
 }
 
 function navigateViewer(delta) {
@@ -1134,21 +1165,197 @@ function closeViewer() {
     viewerUrl = null;
   }
   currentViewerIndex = -1;
-  updateViewerNav();
+  chromeHidden = false;
+  resetZoom();
+  clearTimeout(tapTimeout);
+  lastTapTime = 0;
 }
 
 viewerClose?.addEventListener('click', closeViewer);
 photoViewer?.addEventListener('click', (e) => {
   if (e.target === photoViewer) closeViewer();
 });
-viewerPrev?.addEventListener('click', () => navigateViewer(-1));
-viewerNext?.addEventListener('click', () => navigateViewer(1));
 muteToggle?.addEventListener('click', () => {
   if (viewerVideo.classList.contains('hidden')) return;
   viewerVideo.muted = !viewerVideo.muted;
-  muteToggle.textContent = viewerVideo.muted ? 'Unmute' : 'Mute';
+  muteToggle.textContent = viewerVideo.muted ? '🔇' : '🔊';
 });
-updateViewerNav();
+actionAddAlbum?.addEventListener('click', handleAddToAlbum);
+actionSave?.addEventListener('click', handleSaveMedia);
+actionInfo?.addEventListener('click', handleInfo);
+
+viewerMediaEl?.addEventListener('pointerdown', onViewerPointerDown);
+viewerMediaEl?.addEventListener('pointermove', onViewerPointerMove);
+viewerMediaEl?.addEventListener('pointerup', onViewerPointerUp);
+viewerMediaEl?.addEventListener('pointercancel', resetGesture);
+viewerMediaEl?.addEventListener('pointerleave', (e) => {
+  if (gesture.active && gesture.pointerId === e.pointerId && !gesture.panMode) {
+    resetGesture();
+  }
+});
+
+function onViewerPointerDown(e) {
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  viewerMediaEl.setPointerCapture(e.pointerId);
+  gesture.active = true;
+  gesture.pointerId = e.pointerId;
+  gesture.startX = e.clientX;
+  gesture.startY = e.clientY;
+  gesture.initialX = e.clientX;
+  gesture.initialY = e.clientY;
+  gesture.startTime = performance.now();
+  gesture.panMode = isZoomed;
+}
+
+function onViewerPointerMove(e) {
+  if (!gesture.active || gesture.pointerId !== e.pointerId) return;
+  if (gesture.panMode && isZoomed) {
+    const dx = e.clientX - gesture.startX;
+    const dy = e.clientY - gesture.startY;
+    panX += dx;
+    panY += dy;
+    gesture.startX = e.clientX;
+    gesture.startY = e.clientY;
+    applyZoomTransform();
+  }
+}
+
+function onViewerPointerUp(e) {
+  if (!gesture.active || gesture.pointerId !== e.pointerId) return;
+  viewerMediaEl.releasePointerCapture(e.pointerId);
+  const totalDx = e.clientX - gesture.initialX;
+  const totalDy = e.clientY - gesture.initialY;
+  const duration = performance.now() - gesture.startTime;
+  if (!gesture.panMode) {
+    if (Math.abs(totalDx) > 60 && Math.abs(totalDy) < 120 && duration < 600) {
+      navigateViewer(totalDx > 0 ? -1 : 1);
+    } else if (Math.abs(totalDx) < 10 && Math.abs(totalDy) < 10) {
+      handleTap(e);
+    }
+  } else if (Math.abs(totalDx) < 10 && Math.abs(totalDy) < 10) {
+    handleTap(e);
+  }
+  resetGesture();
+}
+
+function resetGesture() {
+  gesture.active = false;
+  gesture.pointerId = null;
+}
+
+function toggleChrome(force) {
+  chromeHidden = typeof force === 'boolean' ? force : !chromeHidden;
+  photoViewer?.classList.toggle('hide-chrome', chromeHidden);
+}
+
+function resetZoom() {
+  isZoomed = false;
+  panX = 0;
+  panY = 0;
+  applyZoomTransform();
+}
+
+function getActiveMediaElement() {
+  if (viewerVideo && !viewerVideo.classList.contains('hidden')) return viewerVideo;
+  return viewerImg;
+}
+
+function applyZoomTransform() {
+  const target = getActiveMediaElement();
+  if (!target) return;
+  if (isZoomed) {
+    const limit = 200;
+    panX = Math.max(Math.min(panX, limit), -limit);
+    panY = Math.max(Math.min(panY, limit), -limit);
+    target.style.transform = `translate(${panX}px, ${panY}px) scale(2)`;
+    target.classList.add('zoomed');
+  } else {
+    target.style.transform = 'translate(0,0) scale(1)';
+    target.classList.remove('zoomed');
+  }
+}
+
+function toggleZoom(event) {
+  const target = getActiveMediaElement();
+  if (!target) return;
+  isZoomed = !isZoomed;
+  if (isZoomed) {
+    const rect = target.getBoundingClientRect();
+    const originX = ((event?.clientX ?? (rect.left + rect.width / 2)) - rect.left) / rect.width * 100;
+    const originY = ((event?.clientY ?? (rect.top + rect.height / 2)) - rect.top) / rect.height * 100;
+    target.style.transformOrigin = `${originX}% ${originY}%`;
+  } else {
+    panX = 0;
+    panY = 0;
+    target.style.transformOrigin = '50% 50%';
+  }
+  applyZoomTransform();
+}
+
+function handleTap(event) {
+  const now = Date.now();
+  if (now - lastTapTime < 300) {
+    clearTimeout(tapTimeout);
+    lastTapTime = 0;
+    toggleZoom(event);
+  } else {
+    lastTapTime = now;
+    tapTimeout = setTimeout(() => {
+      toggleChrome();
+      lastTapTime = 0;
+    }, 320);
+  }
+}
+
+async function handleAddToAlbum() {
+  const current = getCurrentItem();
+  if (!current) return alert('Open a photo or video first.');
+  if (!albumSelectEl) return alert('No album selector available.');
+  const selection = albumSelectEl.value;
+  if (selection === '' && current.albumId == null) {
+    alert('Already in Loose Photos.');
+    return;
+  }
+  if (!selection && selection !== '') {
+    alert('Choose an album from the “Upload to album” dropdown first.');
+    return;
+  }
+  const albumId = selection ? Number(selection) : null;
+  await idbPut(db, STORE, { ...current, albumId });
+  await refreshGallery();
+  closeViewer();
+  const label = selection ? albumTitleFor(Number(selection)) : albumTitleFor(SPECIAL_UNSORTED);
+  alert(`Moved to ${label}.`);
+}
+
+function handleSaveMedia() {
+  const current = getCurrentItem();
+  if (!current) return alert('Open a photo or video first.');
+  const url = URL.createObjectURL(current.blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = current.name || 'media';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function handleInfo() {
+  const current = getCurrentItem();
+  if (!current) return alert('Open a photo or video first.');
+  const lines = [
+    `Name: ${current.name}`,
+    `Type: ${current.type}`,
+    `Captured: ${new Date(current.captured ?? current.created).toLocaleString()}`,
+    `Uploaded: ${new Date(current.created).toLocaleString()}`,
+    current.kind === 'video'
+      ? `Duration: ${formatDuration(current.duration)}`
+      : `Size: ${current.width}×${current.height}`,
+    `Album: ${current.albumId ? albumTitleFor(current.albumId) : albumTitleFor(SPECIAL_UNSORTED)}`
+  ];
+  alert(lines.join('\n'));
+}
 
 // Export all photos as a .zip (no server)
 async function exportZip() {
