@@ -126,6 +126,7 @@
     .drive-back-btn.hidden { visibility:hidden; }
     .drive-actions { display:flex; gap:12px; justify-content:flex-end; align-items:center; }
     .action-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; letter-spacing:1px; }
+    .ellipsis-icon { font-size:16px; letter-spacing:2px; white-space:nowrap; display:inline-block; transform:translateY(-1px); }
     .dropdown { position:relative; }
     .dropdown-menu { position:absolute; top:48px; right:0; background:rgba(11,17,31,.95); border:1px solid rgba(148,163,184,.2); border-radius:16px; min-width:220px; padding:8px 0; box-shadow:0 12px 30px rgba(0,0,0,.5); z-index:20; display:none; }
     .dropdown-menu.show { display:block; }
@@ -417,7 +418,7 @@
             </div>
           </div>
           <div class="dropdown">
-            <button class="action-btn" id="moreActionsBtn" aria-haspopup="true" aria-expanded="false" aria-label="More actions">• • •</button>
+            <button class="action-btn" id="moreActionsBtn" aria-haspopup="true" aria-expanded="false" aria-label="More actions"><span class="ellipsis-icon">···</span></button>
             <div class="dropdown-menu" id="moreMenu">
               <button data-action="select">✅ Select</button>
               <div class="dropdown-divider"></div>
