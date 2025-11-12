@@ -1,5 +1,4 @@
-Icon Attribution
-================
+# Icon Attribution
 
 The custom icons bundled with this project originate from [Flaticon](https://www.flaticon.com/). Attribution is required under the Flaticon content license. Credits for the icon sets currently in use are listed below:
 
