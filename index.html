@@ -198,6 +198,8 @@
     .bottom-tabs .tab-buttons,
     .bottom-tabs .selection-actions { display:flex; gap:12px; align-items:center; }
     .bottom-tabs .selection-actions.hidden { display:none; }
+    .selection-group { display:flex; gap:12px; align-items:center; }
+    .selection-group.hidden { display:none; }
     .bottom-tabs button { background:none; border:none; color:var(--muted); font-weight:600; padding:6px 14px; border-radius:999px; cursor:pointer; transition:background .2s ease, color .2s ease; }
     .bottom-tabs button.active { background:rgba(56,189,248,.12); color:var(--text); }
     .bottom-tabs .selection-actions button { color:var(--text); border:1px solid rgba(148,163,184,.3); background:rgba(15,23,42,.8); }
@@ -218,6 +220,7 @@
     @media (max-width: 1024px) {
       .album-grid { grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); }
     }
+    .album-grid.list-view { display:flex; flex-direction:column; gap:12px; }
     .album-card {
       aspect-ratio: 1;
       border-radius: 24px;
@@ -238,6 +241,8 @@
     .album-card.new { border:1px dashed rgba(148,163,184,.4); color:var(--muted); }
     .album-card.active { border-color: var(--accent); box-shadow:0 0 0 2px rgba(56,189,248,.4); }
     .album-card.selected { border-color: var(--accent); box-shadow:0 0 0 2px rgba(56,189,248,.4); }
+    .album-grid.list-view .album-card { flex-direction:row; aspect-ratio:auto; gap:16px; padding:18px 20px; justify-content:flex-start; }
+    .album-grid.list-view .album-card .count { text-align:left; }
     .album-empty { text-align:center; padding:24px; color:var(--muted); }
     .theme-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:16px; }
     .theme-card { border-radius:20px; border:1px solid rgba(148,163,184,.2); padding:18px; background:rgba(15,23,42,.85); display:flex; flex-direction:column; gap:12px; cursor:pointer; transition:border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
@@ -507,7 +512,13 @@
             <div class="dropdown-menu" id="albumMoreMenu">
               <button data-album-action="select"><span class="circle-check"><img src="icons/checkmark.png" alt=""></span>Select Albums</button>
               <div class="dropdown-divider"></div>
-              <button data-album-action="delete"><img src="icons/remove-file.png" alt="" class="inline-icon"> Delete Album</button>
+              <button data-album-sort="name-asc"><img src="icons/sort-ascending.png" alt="" class="inline-icon"> Name (A→Z)</button>
+              <button data-album-sort="name-desc"><img src="icons/sort-descending.png" alt="" class="inline-icon"> Name (Z→A)</button>
+              <button data-album-sort="created-desc">🆕 Newest</button>
+              <button data-album-sort="created-asc">🕰 Oldest</button>
+              <div class="dropdown-divider"></div>
+              <button data-album-view="grid">⬚ Thumbnail View</button>
+              <button data-album-view="list">☰ List View</button>
             </div>
           </div>
         </div>
@@ -599,10 +610,16 @@
   <div class="selection-actions hidden" id="selectionActions">
     <button type="button" id="selectionCancelBtn">Cancel</button>
     <button type="button" id="selectionAllBtn">Select All</button>
-    <button type="button" data-bulk="move" disabled><img src="icons/folder.png" alt="" class="inline-icon"> Move</button>
-    <button type="button" data-bulk="copy" disabled><img src="icons/copy.png" alt="" class="inline-icon"> Copy</button>
-    <button type="button" data-bulk="delete" disabled><img src="icons/remove-file.png" alt="" class="inline-icon"> Delete</button>
-    <button type="button" data-bulk="album" disabled><img src="icons/add-file.png" alt="" class="inline-icon"> Add to album</button>
+    <div id="mediaSelectionActions" class="selection-group">
+      <button type="button" data-bulk="move" disabled><img src="icons/folder.png" alt="" class="inline-icon"> Move</button>
+      <button type="button" data-bulk="copy" disabled><img src="icons/copy.png" alt="" class="inline-icon"> Copy</button>
+      <button type="button" data-bulk="delete" disabled><img src="icons/remove-file.png" alt="" class="inline-icon"> Delete</button>
+      <button type="button" data-bulk="album" disabled><img src="icons/add-file.png" alt="" class="inline-icon"> Add to album</button>
+    </div>
+    <div id="albumSelectionActions" class="selection-group hidden">
+      <button type="button" id="copyAlbumsBtn" disabled><img src="icons/copy.png" alt="" class="inline-icon"> Copy to new album</button>
+      <button type="button" id="deleteAlbumsBtn" disabled><img src="icons/remove-file.png" alt="" class="inline-icon"> Delete albums</button>
+    </div>
   </div>
 </nav>
 
@@ -754,6 +771,10 @@ const tabButtons = document.querySelectorAll('.tab-buttons button[data-tab]');
 const selectionActionButtons = selectionActionsEl ? Array.from(selectionActionsEl.querySelectorAll('button[data-bulk]')) : [];
 const selectionCancelBtn = document.getElementById('selectionCancelBtn');
 const selectionAllBtn = document.getElementById('selectionAllBtn');
+const mediaSelectionGroup = document.getElementById('mediaSelectionActions');
+const albumSelectionGroup = document.getElementById('albumSelectionActions');
+const copyAlbumsBtn = document.getElementById('copyAlbumsBtn');
+const deleteAlbumsBtn = document.getElementById('deleteAlbumsBtn');
 const modal = document.getElementById('albumModal');
 const albumModalTitle = document.getElementById('albumModalTitle');
 const albumForm = document.getElementById('albumForm');
@@ -813,6 +834,8 @@ let driveSearchTerm = '';
 let visibleFolderIds = [];
 let visibleMediaIds = [];
 let visibleAlbumIds = [];
+let albumSortMode = 'name-asc';
+let albumViewMode = 'grid';
 const SETTINGS_KEY = 'pwa-photo-gallery-settings';
 const defaultSettings = { namingScheme: '{{original}}', counter: 1, theme: 'deep-space' };
 let settings = loadSettings();
@@ -1103,6 +1126,7 @@ function renderAlbumGrid() {
   if (!albumGridEl) return;
   const showingAlbums = !currentAlbumId;
   albumGridEl.classList.toggle('hidden', !showingAlbums);
+  albumGridEl.classList.toggle('list-view', albumViewMode === 'list');
   if (showingAlbums) {
     albumMediaPanel?.classList.add('hidden');
     albumBackBtn?.classList.add('hidden');
@@ -1118,7 +1142,21 @@ function renderAlbumGrid() {
   albumGridEl.innerHTML = '';
   const emptyMsg = albumEmptyEl;
   const fragment = document.createDocumentFragment();
-  visibleAlbumIds = albums.map(album => album.id);
+  const list = albums.slice();
+  list.sort((a, b) => {
+    switch (albumSortMode) {
+      case 'name-desc':
+        return (b.name || '').localeCompare(a.name || '');
+      case 'created-asc':
+        return (a.created || 0) - (b.created || 0);
+      case 'created-desc':
+        return (b.created || 0) - (a.created || 0);
+      case 'name-asc':
+      default:
+        return (a.name || '').localeCompare(b.name || '');
+    }
+  });
+  visibleAlbumIds = list.map(album => album.id);
   selectedAlbums.forEach(id => { if (!visibleAlbumIds.includes(id)) selectedAlbums.delete(id); });
 
   const newCard = document.createElement('button');
@@ -1135,7 +1173,7 @@ function renderAlbumGrid() {
   }
   emptyMsg?.classList.add('hidden');
 
-  albums.forEach((album) => {
+  list.forEach((album) => {
     const count = albumMembership.get(album.id)?.size || 0;
     const label = count === 1 ? '1 item' : `${count} items`;
     const card = document.createElement('button');
@@ -1332,6 +1370,33 @@ async function deleteAlbumsByIds(ids) {
   }
   ids.forEach(id => albumMembership.delete(id));
   if (ids.includes(currentAlbumId)) currentAlbumId = null;
+  await loadCollections();
+  renderAlbumGrid();
+  renderGallery();
+  updateHeader();
+}
+
+async function copySelectedAlbums() {
+  if (!selectedAlbums.size) return alert('Select at least one album.');
+  const name = prompt('Name for the new album', 'Copied Album');
+  if (!name) return;
+  const created = Date.now();
+  const newAlbumId = await idbAdd(db, COLLECTION_STORE, { name, created });
+  const combined = new Set();
+  selectedAlbums.forEach(albumId => {
+    const members = albumMembership.get(albumId);
+    if (members) members.forEach(id => combined.add(id));
+  });
+  for (const photoId of combined) {
+    const key = `${newAlbumId}-${photoId}`;
+    await idbAdd(db, COLLECTION_ITEMS_STORE, { id: key, albumId: newAlbumId, photoId, created: Date.now() });
+  }
+  albumMembership.set(newAlbumId, combined);
+  selectedAlbums.clear();
+  await loadCollections();
+  setActiveAlbum(newAlbumId);
+  toggleSelectionMode(false);
+  alert('Albums copied to "' + name + '".');
 }
 
 function pickFolderDestination() {
@@ -1401,6 +1466,8 @@ function updateSelectionChrome() {
   const isAlbumGrid = activeTab === TAB_ALBUMS && !currentAlbumId;
   const hasMediaSelection = selectedMedia.size > 0 || selectedFolders.size > 0;
   const hasAlbumSelection = isAlbumGrid && selectedAlbums.size > 0;
+  mediaSelectionGroup?.classList.toggle('hidden', isAlbumGrid);
+  albumSelectionGroup?.classList.toggle('hidden', !isAlbumGrid);
   selectionActionButtons.forEach(btn => {
     if (isAlbumGrid) {
       btn.disabled = btn.dataset.bulk !== 'delete' || !hasAlbumSelection;
@@ -1408,6 +1475,10 @@ function updateSelectionChrome() {
       btn.disabled = !hasMediaSelection;
     }
   });
+  if (albumSelectionGroup) {
+    copyAlbumsBtn.disabled = !hasAlbumSelection;
+    deleteAlbumsBtn.disabled = !hasAlbumSelection;
+  }
 }
 
 async function handleBulkAction(action) {
@@ -1488,9 +1559,6 @@ async function bulkDeleteSelected() {
   selectedAlbums.clear();
   await loadFolders();
   await refreshGallery();
-  if (albumIds.length) {
-    await loadCollections();
-  }
   toggleSelectionMode(false);
 }
 
@@ -1688,11 +1756,6 @@ moreMenu?.addEventListener('click', (e) => {
 albumMoreMenu?.addEventListener('click', (e) => {
   const targetBtn = e.target.closest('button[data-album-action]');
   if (!targetBtn) return;
-  if (targetBtn.dataset.albumAction === 'delete') {
-    handleDeleteAlbum();
-    closeMenus();
-    return;
-  }
   if (targetBtn.dataset.albumAction === 'select') {
     if (currentAlbumId) {
       alert('Return to the album grid to select multiple albums.');
@@ -1700,6 +1763,21 @@ albumMoreMenu?.addEventListener('click', (e) => {
       return;
     }
     toggleSelectionMode();
+    closeMenus();
+    return;
+  }
+  if (targetBtn.dataset.albumSort) {
+    handleAlbumSort(targetBtn.dataset.albumSort);
+    closeMenus();
+    return;
+  }
+  if (targetBtn.dataset.albumView) {
+    handleAlbumView(targetBtn.dataset.albumView);
+    closeMenus();
+    return;
+  }
+  if (targetBtn.dataset.albumAction === 'delete') {
+    handleDeleteAlbum();
     closeMenus();
   }
 });
@@ -1716,6 +1794,18 @@ selectionCancelBtn?.addEventListener('click', () => {
 
 selectionAllBtn?.addEventListener('click', () => {
   selectAllVisible();
+});
+
+copyAlbumsBtn?.addEventListener('click', async () => {
+  await copySelectedAlbums();
+});
+
+deleteAlbumsBtn?.addEventListener('click', async () => {
+  if (!selectedAlbums.size) return alert('Select albums first.');
+  if (!confirm(`Delete ${selectedAlbums.size} album(s)? This cannot be undone.`)) return;
+  await deleteAlbumsByIds(Array.from(selectedAlbums));
+  selectedAlbums.clear();
+  toggleSelectionMode(false);
 });
 
 document.addEventListener('click', (e) => {
@@ -2355,6 +2445,16 @@ function selectAllVisible() {
   selectedMedia = new Set(visibleMediaIds);
   renderGallery();
   updateSelectionChrome();
+}
+
+function handleAlbumSort(mode) {
+  albumSortMode = mode || 'name-asc';
+  renderAlbumGrid();
+}
+
+function handleAlbumView(mode) {
+  albumViewMode = mode === 'list' ? 'list' : 'grid';
+  renderAlbumGrid();
 }
 
 function onViewerPointerDown(e) {
