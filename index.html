@@ -2779,7 +2779,7 @@ async function handleMoveToFolder() {
   });
 }
 
-function handleAddToAlbum() {
+async function handleAddToAlbum() {
   const current = getCurrentItem();
   if (!current) return alert('Open a photo or video first.');
   let selected = currentAlbumId;
