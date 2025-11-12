@@ -436,6 +436,8 @@
               <div class="dropdown-divider"></div>
               <button data-view="list">☰ List View</button>
               <button data-view="grid">⬚ Thumbnail View</button>
+              <div class="dropdown-divider"></div>
+              <button data-action="delete-folder">🗑 Delete Folder</button>
             </div>
           </div>
         </div>
@@ -1157,6 +1159,18 @@ function updateDropHint() {
   dropTargetLabel.textContent = folderTitleFor(currentFolder);
 }
 
+function collectDescendantFolderIds(rootId) {
+  const result = [];
+  const stack = [rootId];
+  while (stack.length) {
+    const id = stack.pop();
+    result.push(id);
+    const children = folders.filter(folder => folder.parentId === id);
+    children.forEach(child => stack.push(child.id));
+  }
+  return result;
+}
+
 function pickFolderDestination() {
   if (!folders.length) {
     return confirm('No folders available. Move to Drive (root)?') ? null : undefined;
@@ -1223,6 +1237,39 @@ function updateSelectionChrome() {
   }
   const hasSelection = selectedMedia.size > 0;
   selectionActionButtons.forEach(btn => { btn.disabled = !hasSelection; });
+}
+
+async function handleDeleteFolder() {
+  if (activeTab !== TAB_FOLDERS) {
+    alert('Switch to Drive to delete folders.');
+    return;
+  }
+  if (typeof currentFolder !== 'number') {
+    alert('Drive root cannot be deleted.');
+    return;
+  }
+  const folder = getFolderById(currentFolder);
+  if (!folder) {
+    alert('Folder not found.');
+    return;
+  }
+  const ok = confirm(`Delete "${folder.name}" and everything inside it? This cannot be undone.`);
+  if (!ok) return;
+  const ids = collectDescendantFolderIds(folder.id);
+  const idSet = new Set(ids);
+  const mediaToDelete = photoCache.filter(item => typeof item.folderId === 'number' && idSet.has(item.folderId));
+  for (const media of mediaToDelete) {
+    await idbDelete(db, STORE, media.id);
+  }
+  for (const id of ids) {
+    await idbDelete(db, FOLDER_STORE, id);
+  }
+  selectedFolders.clear();
+  selectedMedia.clear();
+  const parentId = getFolderParentId(folder.id);
+  await loadFolders();
+  await refreshGallery();
+  setActiveFolder(parentId ?? SPECIAL_ALL);
 }
 
 async function handleBulkAction(action) {
@@ -1447,6 +1494,12 @@ moreMenu?.addEventListener('click', (e) => {
   if (targetBtn.dataset.action === 'select') {
     toggleSelectionMode();
     closeMenus();
+    return;
+  }
+  if (targetBtn.dataset.action === 'delete-folder') {
+    handleDeleteFolder().catch(console.error);
+    closeMenus();
+    return;
   }
 });
 
