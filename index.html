@@ -127,6 +127,7 @@
     .drive-header { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:16px; margin-bottom:12px; }
     .drive-heading { text-align:center; }
     .drive-back-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:18px; cursor:pointer; display:grid; place-items:center; }
+    .drive-back-btn img { width:24px; height:24px; filter:var(--icon-filter); }
     .drive-back-btn.hidden { visibility:hidden; }
     .drive-actions { display:flex; gap:12px; justify-content:flex-end; align-items:center; }
     .action-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; letter-spacing:1px; }
@@ -206,7 +207,7 @@
     .bottom-tabs .selection-actions.hidden { display:none; }
     .selection-group { display:flex; gap:12px; align-items:center; }
     .selection-group.hidden { display:none; }
-    .bottom-tabs button { background:none; border:none; color:var(--muted); font-weight:600; padding:6px 14px; border-radius:999px; cursor:pointer; transition:background .2s ease, color .2s ease; }
+    .bottom-tabs button { background:none; border:none; color:var(--muted); font-weight:600; padding:6px 14px; border-radius:999px; cursor:pointer; transition:background .2s ease, color .2s ease; display:flex; flex-direction:column; align-items:center; gap:6px; }
     .bottom-tabs button.active { background:rgba(56,189,248,.12); color:var(--text); }
     .bottom-tabs .selection-actions button { color:var(--text); border:1px solid rgba(148,163,184,.3); background:rgba(15,23,42,.8); }
     .bottom-tabs .selection-actions button:disabled { opacity:.4; cursor:not-allowed; }
@@ -634,7 +635,7 @@
       <button id="actionMoveFolder" type="button" class="icon-btn" title="Move to folder"><img src="icons/folder.png" alt=""></button>
       <button id="actionAddAlbum" type="button" class="icon-btn" title="Add to album"><img src="icons/add-file.png" alt=""></button>
       <button id="actionSave" type="button" class="icon-btn" title="Save to device"><img src="icons/import.png" alt=""></button>
-      <button id="actionInfo" type="button" class="icon-btn" title="Details">ℹ️</button>
+      <button id="actionInfo" type="button" class="icon-btn" title="Details"><img src="icons/info.png" alt=""></button>
       <button id="muteToggle" type="button" class="icon-btn hidden" title="Mute/unmute">🔇</button>
     </div>
   </div>
@@ -642,9 +643,18 @@
 
 <nav class="bottom-tabs" id="bottomTabs">
   <div class="tab-buttons">
-    <button class="active" data-tab="folders">Drive</button>
-    <button data-tab="albums">Photos</button>
-    <button data-tab="themes">Themes</button>
+    <button class="active" data-tab="folders">
+      <span class="tab-icon"><img src="icons/folder.png" alt=""></span>
+      <span>Drive</span>
+    </button>
+    <button data-tab="albums">
+      <span class="tab-icon"><img src="icons/gallery.png" alt=""></span>
+      <span>Photos</span>
+    </button>
+    <button data-tab="themes">
+      <span class="tab-icon"><img src="icons/settings.png" alt=""></span>
+      <span>Themes</span>
+    </button>
   </div>
   <div class="selection-actions hidden" id="selectionActions">
     <button type="button" id="selectionCancelBtn">Cancel</button>
@@ -2840,3 +2850,4 @@ async function exportZip() {
 </script>
 </body>
 </html>
+    .tab-icon { width:20px; height:20px; display:flex; align-items:center; justify-content:center; }
