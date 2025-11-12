@@ -1,5 +1,5 @@
 // Basic app-shell cache with stale-while-revalidate for HTML
-const VERSION = 'v1.0.0';
+const VERSION = 'v1.1.0';
 const BASE = '/pwa-photo-gallery/';
 const APP_SHELL = [
   BASE,
