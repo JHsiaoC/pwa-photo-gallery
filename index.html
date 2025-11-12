@@ -93,9 +93,9 @@
       min-height: calc(100vh - 140px);
       padding: 32px 16px 140px;
     }
-    .album-heading { display:flex; align-items:flex-start; justify-content: space-between; flex-wrap:wrap; gap:16px; margin-bottom: 20px; }
-    .eyebrow { margin:0; font-size:11px; text-transform:uppercase; letter-spacing:.2em; color:var(--muted); }
-    #activeAlbumTitle { margin:4px 0 0; font-size: 26px; }
+    .album-heading { display:none; }
+    .eyebrow { margin:0; font-size:11px; text-transform:uppercase; letter-spacing:.2em; color:var(--muted); text-align:center; }
+    #activeAlbumTitle { margin:4px 0 0; font-size: 28px; text-align:center; }
     .album-select,
     .folder-select {
       min-width: 180px;
@@ -106,17 +106,6 @@
       padding: 8px;
       font-weight:600;
     }
-    .view-tabs { display:flex; gap:8px; }
-    .tab-btn {
-      border: 1px solid rgba(148,163,184,.25);
-      background: rgba(15,23,42,.7);
-      color: var(--text);
-      padding: 6px 16px;
-      border-radius: 999px;
-      cursor: pointer;
-      font-weight:600;
-    }
-    .tab-btn.active { border-color: var(--accent); color: var(--accent); }
     .controls-stack { display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
     .control-row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; font-size:12px; color:var(--muted); }
     .control-row.hidden { display:none; }
@@ -141,7 +130,11 @@
       border-radius:12px;
     }
     .drive-shell { background: rgba(15,23,42,.75); border-radius: 28px; border:1px solid rgba(148,163,184,.12); box-shadow: 0 20px 60px rgba(0,0,0,.4); padding: 20px; min-height: 60vh; }
-    .top-actions { display:flex; justify-content:flex-end; gap:12px; }
+    .drive-header { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:16px; margin-bottom:12px; }
+    .drive-heading { text-align:center; }
+    .drive-back-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:18px; cursor:pointer; display:grid; place-items:center; }
+    .drive-back-btn.hidden { visibility:hidden; }
+    .drive-actions-left { display:flex; gap:12px; }
     .action-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:18px; cursor:pointer; display:grid; place-items:center; }
     .dropdown { position:relative; }
     .dropdown-menu { position:absolute; top:48px; right:0; background:rgba(11,17,31,.95); border:1px solid rgba(148,163,184,.2); border-radius:16px; min-width:220px; padding:8px 0; box-shadow:0 12px 30px rgba(0,0,0,.5); z-index:20; display:none; }
@@ -149,7 +142,7 @@
     .dropdown-menu button { width:100%; background:none; border:none; color:var(--text); padding:10px 16px; text-align:left; font-size:14px; display:flex; align-items:center; gap:10px; cursor:pointer; }
     .dropdown-menu button:hover { background:rgba(56,189,248,.1); }
     .dropdown-divider { height:1px; background:rgba(148,163,184,.2); margin:6px 0; }
-    .search-bar { margin:16px 0 12px; position:relative; }
+    .search-bar { margin:8px 0 18px; position:relative; }
     .search-bar input { width:100%; padding:12px 16px 12px 40px; border-radius:16px; border:1px solid rgba(148,163,184,.25); background:rgba(15,23,42,.85); color:var(--text); font-size:14px; }
     .search-bar span { position:absolute; top:50%; left:14px; transform:translateY(-50%); color:var(--muted); font-size:16px; }
     .drive-section { margin-top:20px; }
@@ -169,13 +162,13 @@
     .grid.list-view .card { display:flex; gap:16px; height:auto; }
     .grid.list-view .card img, .grid.list-view .card video { width:140px; height:90px; border-radius:16px; }
     .grid.list-view .text-card { width:140px; height:90px; }
+    .grid.list-view .text-card { width:140px; height:90px; }
     .bottom-tabs { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); background:rgba(11,17,31,.9); border:1px solid rgba(148,163,184,.2); border-radius:999px; padding:10px 18px; display:flex; gap:12px; z-index:30; box-shadow:0 10px 40px rgba(0,0,0,.5); }
     .bottom-tabs button { background:none; border:none; color:var(--muted); font-weight:600; padding:6px 14px; border-radius:999px; cursor:pointer; }
     .bottom-tabs button.active { background:rgba(56,189,248,.12); color:var(--text); }
     .drive-shell .select-indicator { opacity:0; transition:opacity .2s ease; }
     .drive-shell.selecting .select-indicator { opacity:1; }
 
-    .toolbar { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 12px; margin-top: 18px; }
     .card { position: relative; border-radius: 16px; overflow: hidden; background: var(--card); border: 1px solid rgba(148,163,184,.15); box-shadow: 0 6px 20px rgba(0,0,0,.25); }
     .card img, .card video { display: block; width: 100%; height: 200px; object-fit: cover; background: #111827; }
@@ -365,55 +358,43 @@
   </style>
 </head>
 <body>
-<header>
-  <div class="wrap row">
-    <h1>📸 My Photo Album</h1>
-    <div class="spacer"></div>
-    <div class="toolbar">
-      <input id="fileInput" type="file" accept="image/*,video/*" multiple style="display:none">
-      <button id="settingsBtn" type="button">Settings</button>
-      <button id="installBtn" class="hidden">Install</button>
-      <button id="exportBtn">Export (.zip)</button>
-      <button id="clearBtn" title="Remove all photos">Clear</button>
-    </div>
-  </div>
-</header>
+
 
 <div class="app-shell">
   <main class="workspace">
-    <div class="album-heading">
-      <div>
-        <p class="eyebrow">Collection</p>
-        <h2 id="activeAlbumTitle">Drive</h2>
-      </div>
-    </div>
-
     <div class="drive-shell">
-      <div class="top-actions">
-        <div class="dropdown">
-          <button class="action-btn" id="primaryAddBtn" aria-haspopup="true" aria-expanded="false">＋</button>
-          <div class="dropdown-menu" id="addMenu">
-            <button data-add="import">📥 Import Media</button>
-            <button data-add="folder">🗂️ New Folder</button>
-            <button data-add="text">📝 New Text File</button>
+      <div class="drive-header">
+        <div class="drive-actions-left">
+          <div class="dropdown">
+            <button class="action-btn" id="primaryAddBtn" aria-haspopup="true" aria-expanded="false">＋</button>
+            <div class="dropdown-menu" id="addMenu">
+              <button data-add="import">📥 Import Media</button>
+              <button data-add="folder">🗂️ New Folder</button>
+              <button data-add="text">📝 New Text File</button>
+            </div>
+          </div>
+          <div class="dropdown">
+            <button class="action-btn" id="moreActionsBtn" aria-haspopup="true" aria-expanded="false">⋯</button>
+            <div class="dropdown-menu" id="moreMenu">
+              <button data-action="select">✅ Select</button>
+              <div class="dropdown-divider"></div>
+              <button data-sort="name-asc">↕️ Name (A→Z)</button>
+              <button data-sort="name-desc">↕️ Name (Z→A)</button>
+              <button data-sort="size-desc">⬆️ Largest</button>
+              <button data-sort="size-asc">⬇️ Smallest</button>
+              <button data-sort="created-desc">🆕 Newest</button>
+              <button data-sort="created-asc">🕰 Oldest</button>
+              <div class="dropdown-divider"></div>
+              <button data-view="list">☰ List View</button>
+              <button data-view="grid">⬚ Thumbnail View</button>
+            </div>
           </div>
         </div>
-        <div class="dropdown">
-          <button class="action-btn" id="moreActionsBtn" aria-haspopup="true" aria-expanded="false">⋯</button>
-          <div class="dropdown-menu" id="moreMenu">
-            <button data-action="select">✅ Select</button>
-            <div class="dropdown-divider"></div>
-            <button data-sort="name-asc">↕️ Name (A→Z)</button>
-            <button data-sort="name-desc">↕️ Name (Z→A)</button>
-            <button data-sort="size-desc">⬆️ Largest</button>
-            <button data-sort="size-asc">⬇️ Smallest</button>
-            <button data-sort="created-desc">🆕 Newest</button>
-            <button data-sort="created-asc">🕰 Oldest</button>
-            <div class="dropdown-divider"></div>
-            <button data-view="list">☰ List View</button>
-            <button data-view="grid">⬚ Thumbnail View</button>
-          </div>
+        <div class="drive-heading">
+          <p class="eyebrow">Collection</p>
+          <h2 id="activeAlbumTitle">Drive</h2>
         </div>
+        <button id="driveBackBtn" class="drive-back-btn hidden" type="button" aria-label="Back to parent">&lt;</button>
       </div>
 
       <div class="search-bar">
@@ -443,17 +424,17 @@
         <div id="driveFolders" class="folder-grid"></div>
       </div>
 
-      <div class="drive-section drive-media">
-        <h3>Media</h3>
-        <div id="driveMedia" class="grid" aria-live="polite"></div>
-        <p id="emptyState" class="empty">
-          No media in <strong id="emptyAlbumLabel">Drive</strong> yet.<br>
-          Everything stays on this device (IndexedDB). Works offline.
-        </p>
-        <div id="dropzone" class="dropzone">
-          Drag & drop media here or use the <strong>＋</strong> menu — files go to <strong id="dropTargetLabel">Main Library</strong>.
+        <div class="drive-section drive-media">
+          <h3>Media</h3>
+          <div id="driveMedia" class="grid" aria-live="polite"></div>
+          <p id="emptyState" class="empty">
+            No media in <strong id="emptyAlbumLabel">Drive</strong> yet.<br>
+            Everything stays on this device (IndexedDB). Works offline.
+          </p>
+          <div id="dropzone" class="dropzone">
+          Drag & drop media here or use the <strong>＋</strong> menu — files go to <strong id="dropTargetLabel">Drive</strong>.
+          </div>
         </div>
-      </div>
     </div>
   </main>
 </div>
@@ -562,9 +543,25 @@ function idbOpen(dbName, version) {
       if (!photoStore.indexNames.contains('folderId')) photoStore.createIndex('folderId', 'folderId');
       if (!photoStore.indexNames.contains('albumId')) photoStore.createIndex('albumId', 'albumId');
 
+      let folderStoreRef;
       if (!db.objectStoreNames.contains(FOLDER_STORE)) {
-        const folders = db.createObjectStore(FOLDER_STORE, { keyPath: 'id', autoIncrement: true });
-        folders.createIndex('name', 'name', { unique: false });
+        folderStoreRef = db.createObjectStore(FOLDER_STORE, { keyPath: 'id', autoIncrement: true });
+        folderStoreRef.createIndex('name', 'name', { unique: false });
+      } else {
+        folderStoreRef = req.transaction.objectStore(FOLDER_STORE);
+      }
+      if (event.oldVersion < 4 && folderStoreRef) {
+        folderStoreRef.openCursor().onsuccess = (ev) => {
+          const cursor = ev.target.result;
+          if (cursor) {
+            const value = cursor.value;
+            if (!('parentId' in value)) {
+              value.parentId = null;
+              cursor.update(value);
+            }
+            cursor.continue();
+          }
+        };
       }
       if (event.oldVersion < 3) {
         if (!db.objectStoreNames.contains(COLLECTION_STORE)) {
@@ -616,7 +613,7 @@ function idbClear(db, store) {
 }
 
 const DB_NAME = 'pwa-photo-album';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const STORE = 'photos';
 const FOLDER_STORE = 'albums';
 const COLLECTION_STORE = 'collections';
@@ -681,6 +678,7 @@ const moreActionsBtn = document.getElementById('moreActionsBtn');
 const addMenu = document.getElementById('addMenu');
 const moreMenu = document.getElementById('moreMenu');
 const driveShellEl = document.querySelector('.drive-shell');
+const driveBackBtn = document.getElementById('driveBackBtn');
 
 let viewerUrl;
 let currentViewList = [];
@@ -713,18 +711,22 @@ const gesture = { active: false, pointerId: null, startX: 0, startY: 0, initialX
 async function ensureFolderSeed() {
   const existing = await idbAll(db, FOLDER_STORE);
   if (!existing.length) {
-    await idbAdd(db, FOLDER_STORE, { name: 'My First Folder', created: Date.now() });
+    await idbAdd(db, FOLDER_STORE, { name: 'My First Folder', created: Date.now(), parentId: null });
   }
 }
 
 async function loadFolders() {
   folders = await idbAll(db, FOLDER_STORE);
+  folders.forEach(folder => {
+    if (folder.parentId === undefined) folder.parentId = null;
+  });
   folders.sort((a, b) => a.name.localeCompare(b.name));
   renderFolderSelect();
   renderFolderList();
   if (typeof currentFolder === 'number' && !folders.find(f => f.id === currentFolder)) {
     currentFolder = SPECIAL_ALL;
   }
+  selectedFolders.clear();
   renderDriveFolders();
   updateHeader();
 }
@@ -735,16 +737,29 @@ function renderFolderSelect() {
   folderSelectEl.innerHTML = '';
   const looseOpt = document.createElement('option');
   looseOpt.value = '';
-  looseOpt.textContent = 'Main Library';
+  looseOpt.textContent = 'Drive (root)';
   folderSelectEl.appendChild(looseOpt);
-  for (const folder of folders) {
+  const tree = buildFolderTree();
+  for (const entry of tree) {
     const opt = document.createElement('option');
-    opt.value = String(folder.id);
-    opt.textContent = folder.name;
+    opt.value = String(entry.id);
+    opt.textContent = entry.label;
     folderSelectEl.appendChild(opt);
   }
   folderSelectEl.value = currentValue || '';
   updateDropHint();
+}
+
+function buildFolderTree(parentId = null, prefix = '') {
+  const list = folders
+    .filter(folder => (folder.parentId ?? null) === (parentId ?? null))
+    .sort((a, b) => a.name.localeCompare(b.name));
+  const result = [];
+  for (const folder of list) {
+    result.push({ id: folder.id, label: prefix + folder.name });
+    result.push(...buildFolderTree(folder.id, prefix + '› '));
+  }
+  return result;
 }
 
 function renderFolderList() {
@@ -804,42 +819,34 @@ function renderDriveFolders() {
     driveFoldersEl.innerHTML = '';
     return;
   }
+  const parentId = typeof currentFolder === 'number' ? currentFolder : null;
   const counts = photoCache.reduce((acc, item) => {
-    const key = item.folderId ?? SPECIAL_UNSORTED;
+    const key = item.folderId ?? null;
     acc[key] = (acc[key] || 0) + 1;
     return acc;
   }, {});
-  let list = folders.slice();
+  let list = folders.filter(folder => (folder.parentId ?? null) === (parentId ?? null));
   if (driveSearchTerm) {
     const term = driveSearchTerm.toLowerCase();
     list = list.filter(folder => folder.name.toLowerCase().includes(term));
   }
   list.sort((a, b) => a.name.localeCompare(b.name));
+  const visibleIds = new Set(list.map(f => f.id));
+  selectedFolders.forEach(id => { if (!visibleIds.has(id)) selectedFolders.delete(id); });
   driveFoldersEl.classList.toggle('folder-list-view', driveViewMode === 'list');
   driveFoldersEl.innerHTML = '';
+  if (!list.length) {
+    const empty = document.createElement('p');
+    empty.className = 'empty';
+    empty.textContent = driveSearchTerm ? 'No folders match this search.' : 'No sub-folders yet.';
+    driveFoldersEl.appendChild(empty);
+    return;
+  }
   const fragment = document.createDocumentFragment();
-  if (!driveSearchTerm) {
-    fragment.appendChild(createFolderCard({ id: SPECIAL_UNSORTED, name: 'Main Library' }, counts[SPECIAL_UNSORTED] || 0));
-  }
-  if (currentFolder !== SPECIAL_ALL && !driveSearchTerm) {
-    const upCard = document.createElement('button');
-    upCard.type = 'button';
-    upCard.className = 'folder-card';
-    upCard.innerHTML = '<div class="name">⬆ Back to Drive</div><div class="count">View everything</div>';
-    upCard.addEventListener('click', () => setActiveFolder(SPECIAL_ALL));
-    fragment.appendChild(upCard);
-  }
   for (const folder of list) {
     fragment.appendChild(createFolderCard(folder, counts[folder.id] || 0));
   }
-  if (!fragment.childNodes.length) {
-    const empty = document.createElement('p');
-    empty.className = 'empty';
-    empty.textContent = 'No folders match this search.';
-    driveFoldersEl.appendChild(empty);
-  } else {
-    driveFoldersEl.appendChild(fragment);
-  }
+  driveFoldersEl.appendChild(fragment);
 }
 
 function createFolderCard(folder, count = 0) {
@@ -859,7 +866,7 @@ function createFolderCard(folder, count = 0) {
   meta.textContent = count ? `${count} item${count === 1 ? '' : 's'}` : 'Empty';
   card.append(name, meta);
   card.addEventListener('click', () => {
-    if (selectionMode && folder.id && folder.id !== SPECIAL_ALL) {
+    if (selectionMode) {
       if (selectedFolders.has(folder.id)) {
         selectedFolders.delete(folder.id);
         card.classList.remove('selected');
@@ -869,20 +876,27 @@ function createFolderCard(folder, count = 0) {
       }
       return;
     }
-    if (folder.id === SPECIAL_ALL) {
-      setActiveFolder(SPECIAL_ALL);
-    } else if (folder.id === SPECIAL_UNSORTED) {
-      setActiveFolder(SPECIAL_UNSORTED);
-    } else {
-      setActiveFolder(folder.id);
-    }
+    setActiveFolder(folder.id);
   });
   return card;
 }
 
 function setActiveFolder(value) {
-  currentFolder = value;
+  let target = value;
+  if (value === SPECIAL_ALL || value === String(SPECIAL_ALL)) {
+    target = SPECIAL_ALL;
+  } else if (value === SPECIAL_UNSORTED || value == null) {
+    target = SPECIAL_ALL;
+  } else if (typeof value === 'string') {
+    target = Number(value);
+  }
+  currentFolder = target;
+  if (driveSearchInput) driveSearchInput.value = '';
+  driveSearchTerm = '';
+  selectedFolders.clear();
+  const wasTab = activeTab;
   setActiveTab(TAB_FOLDERS);
+  if (wasTab !== TAB_FOLDERS) return;
   if (!photoViewer.classList.contains('hidden')) closeViewer();
   renderFolderList();
   renderDriveFolders();
@@ -893,8 +907,18 @@ function setActiveFolder(value) {
 function folderTitleFor(id) {
   if (id === SPECIAL_ALL) return 'Drive';
   if (id === SPECIAL_UNSORTED) return 'Main Library';
-  const found = folders.find(f => f.id === Number(id));
+  const found = getFolderById(id);
   return found?.name || 'Folder';
+}
+
+function getFolderById(id) {
+  if (typeof id !== 'number') return null;
+  return folders.find(f => f.id === Number(id)) || null;
+}
+
+function getFolderParentId(id) {
+  const folder = getFolderById(id);
+  return folder?.parentId ?? null;
 }
 
 async function loadCollections() {
@@ -1050,6 +1074,7 @@ function updateHeader() {
     }
   }
   updateDropHint();
+  updateBackButton();
 }
 
 function updateDropHint() {
@@ -1060,11 +1085,17 @@ function updateDropHint() {
   }
   const value = folderSelectEl?.value;
   if (!value) {
-    dropTargetLabel.textContent = 'Main Library';
+    dropTargetLabel.textContent = 'Drive';
   } else {
     const folder = folders.find(f => String(f.id) === value);
     dropTargetLabel.textContent = folder?.name || 'Selected Folder';
   }
+}
+
+function updateBackButton() {
+  if (!driveBackBtn) return;
+  const showBack = activeTab === TAB_FOLDERS && typeof currentFolder === 'number';
+  driveBackBtn.classList.toggle('hidden', !showBack);
 }
 
 function loadSettings() {
@@ -1103,7 +1134,7 @@ albumForm?.addEventListener('submit', async (e) => {
   const name = albumInput.value.trim();
   if (!name) return;
   if (modalContext === 'folder') {
-    const id = await idbAdd(db, FOLDER_STORE, { name, created: Date.now() });
+    const id = await idbAdd(db, FOLDER_STORE, { name, created: Date.now(), parentId: typeof currentFolder === 'number' ? currentFolder : null });
     closeModal();
     await loadFolders();
     setActiveFolder(Number(id));
@@ -1199,6 +1230,16 @@ moreMenu?.addEventListener('click', (e) => {
 
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.dropdown')) closeMenus();
+});
+
+driveBackBtn?.addEventListener('click', () => {
+  if (currentFolder === SPECIAL_ALL) return;
+  const parentId = getFolderParentId(currentFolder);
+  if (parentId == null) {
+    setActiveFolder(SPECIAL_ALL);
+  } else {
+    setActiveFolder(parentId);
+  }
 });
 
 const DB_READY = (async () => {
@@ -1390,11 +1431,10 @@ function renderGallery() {
   dz?.classList.toggle('hidden', activeTab !== TAB_FOLDERS);
   let list = [];
   if (activeTab === TAB_FOLDERS) {
-    list = photoCache.slice();
     if (typeof currentFolder === 'number') {
-      list = list.filter(item => item.folderId === currentFolder);
-    } else if (currentFolder === SPECIAL_UNSORTED) {
-      list = list.filter(item => item.folderId == null);
+      list = photoCache.filter(item => item.folderId === currentFolder);
+    } else {
+      list = photoCache.filter(item => item.folderId == null);
     }
   } else {
     if (!currentAlbumId) {
@@ -1412,7 +1452,7 @@ function renderGallery() {
     }
     list = photoCache.filter(item => ids.has(item.id));
   }
-  if (driveSearchTerm) {
+  if (activeTab === TAB_FOLDERS && driveSearchTerm) {
     const term = driveSearchTerm.toLowerCase();
     list = list.filter(item => (item.name || '').toLowerCase().includes(term));
   }
