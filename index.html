@@ -54,7 +54,6 @@
     button:hover, label.btn:hover { border-color: rgba(148,163,184,.45); }
     button:active { transform: scale(.98); }
     input[type=file] { display: none; }
-
     .app-shell { display: flex; gap: 24px; width: 100%; margin: 0; padding: 0 16px 120px; }
     .sidebar { display: none; }
     .brand-card { display: flex; align-items: center; gap: 12px; }
@@ -238,6 +237,7 @@
     .album-card .count { font-size:12px; color:var(--muted); }
     .album-card.new { border:1px dashed rgba(148,163,184,.4); color:var(--muted); }
     .album-card.active { border-color: var(--accent); box-shadow:0 0 0 2px rgba(56,189,248,.4); }
+    .album-card.selected { border-color: var(--accent); box-shadow:0 0 0 2px rgba(56,189,248,.4); }
     .album-empty { text-align:center; padding:24px; color:var(--muted); }
     .theme-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:16px; }
     .theme-card { border-radius:20px; border:1px solid rgba(148,163,184,.2); padding:18px; background:rgba(15,23,42,.85); display:flex; flex-direction:column; gap:12px; cursor:pointer; transition:border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
@@ -501,6 +501,8 @@
               <img src="icons/dots.png" alt="More">
             </button>
             <div class="dropdown-menu" id="albumMoreMenu">
+              <button data-album-action="select"><span class="circle-check"><img src="icons/check.png" alt=""></span>Select Albums</button>
+              <div class="dropdown-divider"></div>
               <button data-album-action="delete"><img src="icons/remove.png" alt="" class="inline-icon"> Delete Album</button>
             </div>
           </div>
@@ -802,9 +804,11 @@ let driveViewMode = 'grid';
 let selectionMode = false;
 let selectedFolders = new Set();
 let selectedMedia = new Set();
+let selectedAlbums = new Set();
 let driveSearchTerm = '';
 let visibleFolderIds = [];
 let visibleMediaIds = [];
+let visibleAlbumIds = [];
 const SETTINGS_KEY = 'pwa-photo-gallery-settings';
 const defaultSettings = { namingScheme: '{{original}}', counter: 1, theme: 'deep-space' };
 let settings = loadSettings();
@@ -866,9 +870,6 @@ const THEMES = [
     }
   }
 ];
-
-applyTheme(settings.theme || defaultSettings.theme, false);
-renderThemes();
 
 function applyTheme(themeId, persist = false) {
   const theme = THEMES.find(t => t.id === themeId) || THEMES[0];
@@ -1101,15 +1102,20 @@ function renderAlbumGrid() {
   if (showingAlbums) {
     albumMediaPanel?.classList.add('hidden');
     albumBackBtn?.classList.add('hidden');
+    albumMoreBtn?.classList.remove('hidden');
+  } else {
     albumMoreBtn?.classList.add('hidden');
   }
   if (!showingAlbums) {
+    visibleAlbumIds = [];
     albumEmptyEl?.classList.add('hidden');
     return;
   }
   albumGridEl.innerHTML = '';
   const emptyMsg = albumEmptyEl;
   const fragment = document.createDocumentFragment();
+  visibleAlbumIds = albums.map(album => album.id);
+  selectedAlbums.forEach(id => { if (!visibleAlbumIds.includes(id)) selectedAlbums.delete(id); });
 
   const newCard = document.createElement('button');
   newCard.type = 'button';
@@ -1130,14 +1136,30 @@ function renderAlbumGrid() {
     const label = count === 1 ? '1 item' : `${count} items`;
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = 'album-card';
+    const isActive = album.id === currentAlbumId;
+    const isSelected = selectedAlbums.has(album.id);
+    card.className = 'album-card' + (isActive ? ' active' : '') + (isSelected ? ' selected' : '');
     card.innerHTML = '<div class=\"title\">' + album.name + '</div>' +
       '<div class=\"count\">' + label + '</div>';
-    card.addEventListener('click', () => setActiveAlbum(album.id));
+    card.addEventListener('click', () => {
+      if (selectionMode && !currentAlbumId) {
+        if (selectedAlbums.has(album.id)) {
+          selectedAlbums.delete(album.id);
+          card.classList.remove('selected');
+        } else {
+          selectedAlbums.add(album.id);
+          card.classList.add('selected');
+        }
+        updateSelectionChrome();
+        return;
+      }
+      setActiveAlbum(album.id);
+    });
     fragment.appendChild(card);
   });
 
   albumGridEl.appendChild(fragment);
+  updateSelectionChrome();
 }
 
 function setActiveFolder(value) {
@@ -1154,6 +1176,7 @@ function setActiveFolder(value) {
   driveSearchTerm = '';
   selectedFolders.clear();
   selectedMedia.clear();
+  selectedAlbums.clear();
   updateSelectionChrome();
   const wasTab = activeTab;
   setActiveTab(TAB_FOLDERS);
@@ -1199,6 +1222,7 @@ async function loadCollections() {
 }
 
 function setActiveAlbum(id) {
+  if (id && selectionMode) toggleSelectionMode(false);
   currentAlbumId = id || null;
   setActiveTab(TAB_ALBUMS);
   if (!photoViewer.classList.contains('hidden')) closeViewer();
@@ -1218,11 +1242,8 @@ function setActiveTab(tab) {
   driveShellEl?.classList.toggle('hidden', tab !== TAB_FOLDERS);
   albumShellEl?.classList.toggle('hidden', tab !== TAB_ALBUMS);
   themeShellEl?.classList.toggle('hidden', tab !== TAB_THEMES);
-  if (tab !== TAB_FOLDERS && selectionMode) {
+  if (tab === TAB_THEMES && selectionMode) {
     toggleSelectionMode(false);
-  }
-  if (tab === TAB_THEMES) {
-    albumMoreBtn?.classList.add('hidden');
   }
   updateHeader();
   renderFolderList();
@@ -1297,6 +1318,18 @@ async function deleteFoldersByIds(ids) {
   }
 }
 
+async function deleteAlbumsByIds(ids) {
+  for (const id of ids) {
+    const members = albumMembership.get(id) || new Set();
+    for (const photoId of members) {
+      await idbDelete(db, COLLECTION_ITEMS_STORE, `${id}-${photoId}`);
+    }
+    await idbDelete(db, COLLECTION_STORE, id);
+  }
+  ids.forEach(id => albumMembership.delete(id));
+  if (ids.includes(currentAlbumId)) currentAlbumId = null;
+}
+
 function pickFolderDestination() {
   if (!folders.length) {
     return confirm('No folders available. Move to Drive (root)?') ? null : undefined;
@@ -1361,8 +1394,16 @@ function updateSelectionChrome() {
   if (bottomTabsEl) {
     bottomTabsEl.classList.toggle('action-mode', selectionMode);
   }
-  const hasSelection = selectedMedia.size > 0 || selectedFolders.size > 0;
-  selectionActionButtons.forEach(btn => { btn.disabled = !hasSelection; });
+  const isAlbumGrid = activeTab === TAB_ALBUMS && !currentAlbumId;
+  const hasMediaSelection = selectedMedia.size > 0 || selectedFolders.size > 0;
+  const hasAlbumSelection = isAlbumGrid && selectedAlbums.size > 0;
+  selectionActionButtons.forEach(btn => {
+    if (isAlbumGrid) {
+      btn.disabled = btn.dataset.bulk !== 'delete' || !hasAlbumSelection;
+    } else {
+      btn.disabled = !hasMediaSelection;
+    }
+  });
 }
 
 async function handleBulkAction(action) {
@@ -1425,8 +1466,9 @@ async function bulkCopySelected() {
 async function bulkDeleteSelected() {
   const items = getSelectedMediaItems();
   const folderIds = Array.from(selectedFolders);
-  if (!items.length && !folderIds.length) return alert('Select media or folders first.');
-  const total = items.length + folderIds.length;
+  const albumIds = Array.from(selectedAlbums);
+  if (!items.length && !folderIds.length && !albumIds.length) return alert('Select something to delete.');
+  const total = items.length + folderIds.length + albumIds.length;
   if (!confirm(`Delete ${total} selected item(s)? This cannot be undone.`)) return;
   for (const item of items) {
     await idbDelete(db, STORE, item.id);
@@ -1434,10 +1476,17 @@ async function bulkDeleteSelected() {
   if (folderIds.length) {
     await deleteFoldersByIds(folderIds);
   }
+  if (albumIds.length) {
+    await deleteAlbumsByIds(albumIds);
+  }
   selectedMedia.clear();
   selectedFolders.clear();
+  selectedAlbums.clear();
   await loadFolders();
   await refreshGallery();
+  if (albumIds.length) {
+    await loadCollections();
+  }
   toggleSelectionMode(false);
 }
 
@@ -1638,6 +1687,16 @@ albumMoreMenu?.addEventListener('click', (e) => {
   if (targetBtn.dataset.albumAction === 'delete') {
     handleDeleteAlbum();
     closeMenus();
+    return;
+  }
+  if (targetBtn.dataset.albumAction === 'select') {
+    if (currentAlbumId) {
+      alert('Return to the album grid to select multiple albums.');
+      closeMenus();
+      return;
+    }
+    toggleSelectionMode();
+    closeMenus();
   }
 });
 
@@ -1712,6 +1771,9 @@ async function addFiles(fileList) {
     });
   }
   await refreshGallery();
+  if (driveSearchInput) driveSearchInput.value = '';
+  driveSearchTerm = '';
+  renderGallery();
 }
 
 async function addInlineMedia({ name, blob, type }) {
@@ -1735,6 +1797,9 @@ async function addInlineMedia({ name, blob, type }) {
     folderId: typeof currentFolder === 'number' ? currentFolder : null
   });
   await refreshGallery();
+  if (driveSearchInput) driveSearchInput.value = '';
+  driveSearchTerm = '';
+  renderGallery();
 }
 
 function isSupportedFile(file) {
@@ -1924,6 +1989,7 @@ function renderGallery() {
   albumMediaPanel?.classList.toggle('hidden', !viewingAlbum);
   albumBackBtn?.classList.toggle('hidden', !viewingAlbum);
   albumMoreBtn?.classList.toggle('hidden', !viewingAlbum);
+  if (viewingAlbum) visibleAlbumIds = [];
   if (!viewingAlbum) {
     albumMediaEmptyEl?.classList.add('hidden');
     currentViewList = [];
@@ -2256,13 +2322,23 @@ function toggleSelectionMode(force) {
   if (!selectionMode) {
     selectedFolders.clear();
     selectedMedia.clear();
+    selectedAlbums.clear();
   }
-  driveShellEl?.classList.toggle('selecting', selectionMode);
+  driveShellEl?.classList.toggle('selecting', selectionMode && activeTab === TAB_FOLDERS);
   updateSelectionChrome();
   renderGallery();
+  renderAlbumGrid();
 }
 
 function selectAllVisible() {
+  if (activeTab === TAB_ALBUMS && !currentAlbumId) {
+    if (!visibleAlbumIds.length) return alert('Nothing to select here.');
+    if (!selectionMode) toggleSelectionMode(true);
+    selectedAlbums = new Set(visibleAlbumIds);
+    renderAlbumGrid();
+    updateSelectionChrome();
+    return;
+  }
   const hasAny = visibleFolderIds.length || visibleMediaIds.length;
   if (!hasAny) {
     alert('Nothing to select here.');
