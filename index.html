@@ -96,15 +96,6 @@
     .album-heading { display:none; }
     .eyebrow { margin:0; font-size:11px; text-transform:uppercase; letter-spacing:.2em; color:var(--muted); text-align:center; }
     #activeAlbumTitle { margin:4px 0 0; font-size: 28px; text-align:center; }
-    .album-select {
-      min-width: 180px;
-      background: rgba(15,23,42,.85);
-      color: var(--text);
-      border: 1px solid rgba(148,163,184,.25);
-      border-radius: 12px;
-      padding: 8px;
-      font-weight:600;
-    }
     .controls-stack { display:flex; flex-direction:column; gap:8px; align-items:flex-start; }
     .control-row { display:flex; flex-wrap:wrap; gap:12px; align-items:center; font-size:12px; color:var(--muted); }
     .control-row.hidden { display:none; }
@@ -189,6 +180,9 @@
     .album-shell { background: rgba(15,23,42,.75); border-radius: 28px; border:1px solid rgba(148,163,184,.12); box-shadow: 0 20px 60px rgba(0,0,0,.4); padding: 24px; min-height: 60vh; }
     .photos-header { text-align:center; margin-bottom:16px; }
     #photosHeading { margin:0; font-size:28px; }
+    .album-toolbar { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:16px; }
+    .album-toolbar .photos-header { flex:1; margin-bottom:0; }
+    .album-media-panel { margin-top:20px; }
     .album-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:18px; }
     @media (max-width: 1024px) {
       .album-grid { grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); }
@@ -461,24 +455,18 @@
     </div>
 
     <div class="album-shell hidden">
-      <div class="photos-header">
-        <p class="eyebrow">Library</p>
-        <h2 id="photosHeading">Photos</h2>
-      </div>
-      <div id="albumControls" class="control-row hidden">
-        <label style="display:flex; flex-direction:column; gap:4px;">
-          <span>Select album</span>
-          <select id="albumSelect" class="album-select">
-            <option value="">Choose album</option>
-          </select>
-        </label>
+      <div class="album-toolbar">
+        <button id="albumBackBtn" class="drive-back-btn hidden" type="button" aria-label="Back to albums">&lt;</button>
+        <div class="photos-header">
+          <p class="eyebrow">Library</p>
+          <h2 id="photosHeading">Photos</h2>
+        </div>
       </div>
       <div id="albumGrid" class="album-grid"></div>
       <p id="albumEmpty" class="empty album-empty hidden">No albums yet. Tap <strong>New Album</strong> to create one.</p>
-      <div class="drive-section">
-        <h3>Album Media</h3>
+      <div id="albumMediaPanel" class="album-media-panel hidden">
         <div id="albumMedia" class="grid" aria-live="polite"></div>
-        <p id="albumMediaEmpty" class="empty">Select an album to view media.</p>
+        <p id="albumMediaEmpty" class="empty">This album is empty.</p>
       </div>
     </div>
   </main>
@@ -699,8 +687,6 @@ const albumTitleEl = document.getElementById('activeAlbumTitle');
 const photosHeadingEl = document.getElementById('photosHeading');
 const emptyAlbumLabel = document.getElementById('emptyAlbumLabel');
 const dropTargetLabel = document.getElementById('dropTargetLabel');
-const albumSelectEl = document.getElementById('albumSelect');
-const albumControlsEl = document.getElementById('albumControls');
 const bottomTabsEl = document.getElementById('bottomTabs');
 const selectionActionsEl = document.getElementById('selectionActions');
 const tabButtons = document.querySelectorAll('.tab-buttons button[data-tab]');
@@ -743,8 +729,10 @@ const driveBackBtn = document.getElementById('driveBackBtn');
 const albumShellEl = document.querySelector('.album-shell');
 const albumGridEl = document.getElementById('albumGrid');
 const albumEmptyEl = document.getElementById('albumEmpty');
+const albumMediaPanel = document.getElementById('albumMediaPanel');
 const albumMediaEl = document.getElementById('albumMedia');
 const albumMediaEmptyEl = document.getElementById('albumMediaEmpty');
+const albumBackBtn = document.getElementById('albumBackBtn');
 
 let viewerUrl;
 let currentViewList = [];
@@ -949,6 +937,12 @@ function createMediaTile(item, idx) {
 
 function renderAlbumGrid() {
   if (!albumGridEl) return;
+  const showingAlbums = !currentAlbumId;
+  albumGridEl.classList.toggle('hidden', !showingAlbums);
+  if (!showingAlbums) {
+    albumEmptyEl?.classList.add('hidden');
+    return;
+  }
   albumGridEl.innerHTML = '';
   const emptyMsg = albumEmptyEl;
   const fragment = document.createDocumentFragment();
@@ -972,7 +966,7 @@ function renderAlbumGrid() {
     const label = count === 1 ? '1 item' : `${count} items`;
     const card = document.createElement('button');
     card.type = 'button';
-    card.className = 'album-card' + (album.id === currentAlbumId ? ' active' : '');
+    card.className = 'album-card';
     card.innerHTML = '<div class=\"title\">' + album.name + '</div>' +
       '<div class=\"count\">' + label + '</div>';
     card.addEventListener('click', () => setActiveAlbum(album.id));
@@ -1035,44 +1029,16 @@ async function loadCollections() {
   if (currentAlbumId && !albums.find(a => a.id === currentAlbumId)) {
     currentAlbumId = null;
   }
-  renderAlbumSelect();
   renderAlbumGrid();
+  renderGallery();
+  updateHeader();
 }
-
-function renderAlbumSelect() {
-  if (!albumSelectEl) return;
-  albumSelectEl.innerHTML = '';
-  const placeholder = document.createElement('option');
-  placeholder.value = '';
-  placeholder.textContent = albums.length ? 'Choose album' : 'No albums yet';
-  albumSelectEl.appendChild(placeholder);
-  for (const album of albums) {
-    const opt = document.createElement('option');
-    opt.value = String(album.id);
-    opt.textContent = album.name;
-    albumSelectEl.appendChild(opt);
-  }
-  albumSelectEl.disabled = !albums.length;
-  if (currentAlbumId && albums.find(a => a.id === currentAlbumId)) {
-    albumSelectEl.value = String(currentAlbumId);
-  } else {
-    albumSelectEl.value = '';
-  }
-}
-
-function renderAlbumNav() {
-  renderAlbumSelect();
-  renderAlbumGrid();
-}
-
-
 
 function setActiveAlbum(id) {
   currentAlbumId = id || null;
   setActiveTab(TAB_ALBUMS);
   if (!photoViewer.classList.contains('hidden')) closeViewer();
   renderAlbumGrid();
-  renderAlbumSelect();
   updateHeader();
   renderGallery();
 }
@@ -1087,13 +1053,8 @@ function setActiveTab(tab) {
   tabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
   driveShellEl?.classList.toggle('hidden', tab !== TAB_FOLDERS);
   albumShellEl?.classList.toggle('hidden', tab !== TAB_ALBUMS);
-  albumControlsEl?.classList.toggle('hidden', tab !== TAB_ALBUMS);
   if (tab !== TAB_FOLDERS && selectionMode) {
     toggleSelectionMode(false);
-  }
-  if (tab === TAB_ALBUMS && !currentAlbumId && albums.length) {
-    currentAlbumId = albums[0].id;
-    albumSelectEl.value = String(currentAlbumId);
   }
   updateHeader();
   renderFolderList();
@@ -1115,18 +1076,6 @@ tabButtons.forEach(btn => btn.addEventListener('click', () => {
       break;
   }
 }));
-
-albumSelectEl?.addEventListener('change', () => {
-  const value = Number(albumSelectEl.value);
-  if (value) {
-    setActiveAlbum(value);
-  } else {
-    currentAlbumId = null;
-    updateHeader();
-    renderAlbumNav();
-    renderGallery();
-  }
-});
 
 function updateHeader() {
   if (activeTab === TAB_FOLDERS) {
@@ -1342,8 +1291,11 @@ async function bulkDeleteSelected() {
 async function bulkAddToAlbumSelected() {
   const items = getSelectedMediaItems();
   if (!items.length) return alert('Select media first.');
-  const albumId = pickAlbumDestination();
-  if (albumId === undefined) return;
+  let albumId = currentAlbumId;
+  if (!albumId) {
+    albumId = pickAlbumDestination();
+  }
+  if (!albumId) return;
   const membership = albumMembership.get(albumId) || new Set();
   for (const item of items) {
     if (membership.has(item.id)) continue;
@@ -1522,6 +1474,11 @@ driveBackBtn?.addEventListener('click', () => {
   } else {
     setActiveFolder(parentId);
   }
+});
+
+albumBackBtn?.addEventListener('click', () => {
+  if (selectionMode) toggleSelectionMode(false);
+  setActiveAlbum(null);
 });
 
 const DB_READY = (async () => {
@@ -1766,25 +1723,23 @@ function renderGallery() {
   // Album tab
   container.innerHTML = '';
   driveEmpty?.classList.add('hidden');
-  if (!currentAlbumId) {
-    if (albumEmpty) {
-      albumEmpty.textContent = 'Select an album to view media.';
-      albumEmpty.classList.remove('hidden');
-    }
+  const viewingAlbum = !!currentAlbumId;
+  albumMediaPanel?.classList.toggle('hidden', !viewingAlbum);
+  albumBackBtn?.classList.toggle('hidden', !viewingAlbum);
+  if (!viewingAlbum) {
+    albumMediaEmptyEl?.classList.add('hidden');
     currentViewList = [];
     updateSelectionChrome();
     return;
   }
   const ids = albumMembership.get(currentAlbumId);
   if (!ids || !ids.size) {
-    if (albumEmpty) {
-      albumEmpty.textContent = 'This album is empty.';
-      albumEmpty.classList.remove('hidden');
-    }
+    albumMediaEmptyEl?.classList.remove('hidden');
     currentViewList = [];
     updateSelectionChrome();
     return;
   }
+  albumMediaEmptyEl?.classList.add('hidden');
   let list = photoCache.filter(item => ids.has(item.id));
   list = sortPhotos(list);
   currentViewList = list;
@@ -2170,8 +2125,12 @@ function handleMoveToFolder() {
 function handleAddToAlbum() {
   const current = getCurrentItem();
   if (!current) return alert('Open a photo or video first.');
-  const selected = Number(albumSelectEl?.value) || currentAlbumId;
-  if (!selected) return alert('Select an album in the Albums tab first.');
+  let selected = currentAlbumId;
+  if (!selected) {
+    const choice = pickAlbumDestination();
+    if (!choice) return;
+    selected = choice;
+  }
   const membership = albumMembership.get(selected) || new Set();
   if (membership.has(current.id)) {
     alert('Already in that album.');
@@ -2181,7 +2140,8 @@ function handleAddToAlbum() {
   idbAdd(db, COLLECTION_ITEMS_STORE, entry).then(async () => {
     if (!albumMembership.has(selected)) albumMembership.set(selected, new Set());
     albumMembership.get(selected).add(current.id);
-    renderAlbumNav();
+    renderAlbumGrid();
+    if (currentAlbumId === selected) updateHeader();
     if (activeTab === TAB_ALBUMS && currentAlbumId === selected) renderGallery();
     alert('Added to album.');
   }).catch(() => alert('Unable to add to album.'));
