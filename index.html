@@ -305,7 +305,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 30;
+      z-index: 80;
     }
     .modal-card {
       background: var(--sidebar);
@@ -327,6 +327,72 @@
       font-size: 14px;
     }
     .modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
+    #listPickerModal .modal-card { width:min(520px, 95vw); }
+    .picker-list {
+      display:grid;
+      grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));
+      gap:12px;
+      max-height:60vh;
+      overflow-y:auto;
+      margin-top:12px;
+      padding-right:4px;
+    }
+    .picker-card {
+      width:100%;
+      text-align:left;
+      padding:10px;
+      border-radius:16px;
+      border:1px solid rgba(148,163,184,.2);
+      background:rgba(15,23,42,.9);
+      color:var(--text);
+      font-weight:600;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      transition:border-color .2s ease;
+    }
+    .picker-card:hover { border-color:var(--accent); }
+    .picker-thumb {
+      width:100%;
+      aspect-ratio:1 / 1;
+      border-radius:14px;
+      background:rgba(2,6,23,.85);
+      overflow:hidden;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      position:relative;
+    }
+    .picker-thumb img,
+    .picker-thumb video {
+      width:100%;
+      height:100%;
+      object-fit:cover;
+      display:block;
+    }
+    .picker-thumb video {
+      pointer-events:none;
+    }
+    .picker-thumb-icon {
+      width:36px;
+      height:36px;
+      object-fit:contain;
+      opacity:.8;
+      filter:var(--icon-filter);
+    }
+    .picker-thumb-text {
+      width:100%;
+      height:100%;
+      padding:12px;
+      font-size:12px;
+      color:var(--muted);
+      text-align:left;
+      overflow:hidden;
+      white-space:pre-wrap;
+    }
+    .picker-label { font-size:14px; font-weight:600; }
+    .picker-subtitle { font-size:12px; color:var(--muted); }
+    .picker-list .empty { grid-column:1 / -1; margin:0; }
 
     @media (max-width: 960px) {
       .app-shell { flex-direction: column; }
@@ -864,6 +930,7 @@ const listPickerTitle = document.getElementById('listPickerTitle');
 const listPickerList = document.getElementById('listPickerList');
 const listPickerCancel = document.getElementById('listPickerCancel');
 let listPickerModalResolver = null;
+const listPickerPreviewUrls = [];
 const modal = document.getElementById('albumModal');
 const albumModalTitle = document.getElementById('albumModalTitle');
 const albumForm = document.getElementById('albumForm');
@@ -1104,20 +1171,83 @@ textFileForm?.addEventListener('submit', (e) => {
   closeTextFileModal({ name, content: textFileContentInput.value || '' });
 });
 
+function trackPickerPreviewUrl(url) {
+  if (!url) return;
+  listPickerPreviewUrls.push(url);
+}
+
+function cleanupPickerPreviews() {
+  while (listPickerPreviewUrls.length) {
+    const url = listPickerPreviewUrls.pop();
+    URL.revokeObjectURL(url);
+  }
+}
+
 function openListPicker({ title, items }) {
   if (!listPickerModal) return Promise.resolve(null);
+  cleanupPickerPreviews();
   listPickerTitle.textContent = title || 'Select option';
   listPickerList.innerHTML = '';
-  const buttons = [];
-  (items || []).forEach((item) => {
+  const entries = Array.isArray(items) ? items : [];
+  entries.forEach((item) => {
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.textContent = item.label;
+    btn.className = 'picker-card';
+    const thumb = document.createElement('div');
+    thumb.className = 'picker-thumb';
+    const preview = item.previewMedia;
+    if (preview) {
+      const isVideo = preview.kind === 'video' || preview.type?.startsWith('video/');
+      const isText = preview.kind === 'text' || preview.type === 'text/plain';
+      if (isText) {
+        const textBlock = document.createElement('div');
+        textBlock.className = 'picker-thumb-text';
+        textBlock.textContent = preview.preview || preview.name || 'Text file';
+        thumb.appendChild(textBlock);
+      } else if (isVideo || preview.blob) {
+        const mediaEl = document.createElement(isVideo ? 'video' : 'img');
+        if (isVideo) {
+          mediaEl.muted = true;
+          mediaEl.loop = true;
+          mediaEl.playsInline = true;
+          mediaEl.autoplay = true;
+        } else {
+          mediaEl.loading = 'lazy';
+          mediaEl.alt = item.label || '';
+        }
+        const url = URL.createObjectURL(preview.blob);
+        trackPickerPreviewUrl(url);
+        mediaEl.src = url;
+        thumb.appendChild(mediaEl);
+      } else {
+        const fallback = document.createElement('img');
+        fallback.src = item.icon || 'icons/folder.png';
+        fallback.alt = '';
+        fallback.className = 'picker-thumb-icon';
+        thumb.appendChild(fallback);
+      }
+    } else {
+      const icon = document.createElement('img');
+      icon.src = item.icon || 'icons/folder.png';
+      icon.alt = '';
+      icon.className = 'picker-thumb-icon';
+      thumb.appendChild(icon);
+    }
+    btn.appendChild(thumb);
+    const label = document.createElement('span');
+    label.className = 'picker-label';
+    label.textContent = item.label || 'Untitled';
+    btn.appendChild(label);
+    if (item.subtitle) {
+      const subtitle = document.createElement('span');
+      subtitle.className = 'picker-subtitle';
+      subtitle.textContent = item.subtitle;
+      btn.appendChild(subtitle);
+    }
     btn.addEventListener('click', () => closeListPicker(item.value));
-    buttons.push(btn);
     listPickerList.appendChild(btn);
   });
-  if (!buttons.length) {
+  if (!entries.length) {
     const empty = document.createElement('p');
     empty.className = 'empty';
     empty.textContent = 'No options available.';
@@ -1125,13 +1255,16 @@ function openListPicker({ title, items }) {
   }
   listPickerModal.classList.remove('hidden');
   return new Promise((resolve) => {
-    listPickerModal.dataset.resolver = '1';
     listPickerModalResolver = resolve;
   });
 }
 
 function closeListPicker(value) {
-  if (listPickerModal) listPickerModal.classList.add('hidden');
+  if (listPickerModal) {
+    listPickerModal.classList.add('hidden');
+    if (listPickerList) listPickerList.innerHTML = '';
+  }
+  cleanupPickerPreviews();
   if (listPickerModalResolver) {
     listPickerModalResolver(value ?? null);
     listPickerModalResolver = null;
@@ -1646,16 +1779,67 @@ async function copyAlbumsToAlbumSelected() {
   toggleSelectionMode(false);
 }
 
-async function pickFolderDestination() {
-  if (!folders.length) {
-    alert('No folders available yet.');
-    return undefined;
+function formatCountLabel(count) {
+  if (count === 0) return 'Empty';
+  return count === 1 ? '1 item' : `${count} items`;
+}
+
+function getFolderPreviewMedia(folderId) {
+  const target = folderId ?? null;
+  let latest = null;
+  for (const item of photoCache) {
+    if ((item.folderId ?? null) !== target) continue;
+    if (!latest || item.created > latest.created) latest = item;
   }
+  return latest;
+}
+
+function getFolderItemCount(folderId) {
+  const target = folderId ?? null;
+  return photoCache.reduce((count, item) => ((item.folderId ?? null) === target ? count + 1 : count), 0);
+}
+
+function buildFolderPickerOption(folderId, label) {
+  const count = getFolderItemCount(folderId);
+  const subtitle = folderId == null ? `Top level • ${formatCountLabel(count)}` : formatCountLabel(count);
+  return {
+    label,
+    value: folderId,
+    previewMedia: getFolderPreviewMedia(folderId),
+    icon: 'icons/folder.png',
+    subtitle
+  };
+}
+
+async function pickFolderDestination() {
   const options = [
-    { label: 'Drive (root)', value: null },
-    ...folders.map(folder => ({ label: folder.name, value: folder.id }))
+    buildFolderPickerOption(null, 'Drive (root)'),
+    ...folders.map(folder => buildFolderPickerOption(folder.id, folder.name))
   ];
   return openListPicker({ title: 'Move to folder', items: options });
+}
+
+function getAlbumPreviewMedia(albumId) {
+  const membership = albumMembership.get(albumId);
+  if (!membership || !membership.size) return null;
+  let latest = null;
+  for (const item of photoCache) {
+    if (!membership.has(item.id)) continue;
+    if (!latest || item.created > latest.created) latest = item;
+  }
+  return latest;
+}
+
+function buildAlbumPickerOption(album) {
+  const membership = albumMembership.get(album.id);
+  const count = membership ? membership.size : 0;
+  return {
+    label: album.name,
+    value: album.id,
+    previewMedia: getAlbumPreviewMedia(album.id),
+    icon: 'icons/gallery.png',
+    subtitle: formatCountLabel(count)
+  };
 }
 
 async function pickAlbumDestination() {
@@ -1663,7 +1847,7 @@ async function pickAlbumDestination() {
     alert('Create an album first.');
     return undefined;
   }
-  const options = albums.map(album => ({ label: album.name, value: album.id }));
+  const options = albums.map(buildAlbumPickerOption);
   return openListPicker({ title: 'Choose album', items: options });
 }
 
