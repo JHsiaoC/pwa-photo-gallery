@@ -126,23 +126,14 @@
     .drive-shell { background: transparent; border-radius: 0; border: none; box-shadow: none; padding: 20px 0 40px; min-height: 60vh; }
     .drive-header { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:16px; margin-bottom:12px; }
     .drive-heading { text-align:center; }
-    .drive-back-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:18px; cursor:pointer; display:grid; place-items:center; position:relative; }
-    .drive-back-btn::after {
-      content:'';
-      width:14px;
-      height:14px;
-      border-left:3px solid currentColor;
-      border-bottom:3px solid currentColor;
-      transform:rotate(45deg);
-      filter:var(--icon-filter);
-    }
+    .drive-back-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .drive-back-btn img { width:26px; height:26px; filter:var(--icon-filter); }
     .drive-back-btn.hidden { visibility:hidden; }
     .drive-actions { display:flex; gap:12px; justify-content:flex-end; align-items:center; }
     .action-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; letter-spacing:1px; }
     .action-btn img,
     .icon-btn img,
     .inline-icon,
-    .drive-back-btn img,
     .circle-check img,
     .search-bar .search-icon,
     .tab-icon img {
@@ -460,7 +451,9 @@
   <main class="workspace">
     <div class="drive-shell">
       <div class="drive-header">
-        <button id="driveBackBtn" class="drive-back-btn hidden" type="button" aria-label="Back to parent"></button>
+        <button id="driveBackBtn" class="drive-back-btn hidden" type="button" aria-label="Back to parent">
+          <img src="icons/left.png" alt="Back">
+        </button>
         <div class="drive-heading">
           <h2 id="activeAlbumTitle">Drive</h2>
         </div>
@@ -511,7 +504,9 @@
 
     <div class="album-shell hidden">
       <div class="album-toolbar">
-        <button id="albumBackBtn" class="drive-back-btn hidden" type="button" aria-label="Back to albums"></button>
+        <button id="albumBackBtn" class="drive-back-btn hidden" type="button" aria-label="Back to albums">
+          <img src="icons/left.png" alt="Back">
+        </button>
         <div class="photos-header">
           <p class="eyebrow">Library</p>
           <h2 id="photosHeading">Photos</h2>
@@ -2909,4 +2904,4 @@ async function exportZip() {
 </body>
 </html>
     .tab-icon { width:20px; height:20px; display:flex; align-items:center; justify-content:center; }
-    .tab-icon img { width:20px; height:20px; }
+    .tab-icon img { width:18px; height:18px; object-fit:contain; filter:var(--icon-filter); }
