@@ -439,7 +439,9 @@
   <main class="workspace">
     <div class="drive-shell">
       <div class="drive-header">
-        <button id="driveBackBtn" class="drive-back-btn hidden" type="button" aria-label="Back to parent">&lt;</button>
+        <button id="driveBackBtn" class="drive-back-btn hidden" type="button" aria-label="Back to parent">
+          <img src="icons/left.png" alt="Back">
+        </button>
         <div class="drive-heading">
           <h2 id="activeAlbumTitle">Drive</h2>
         </div>
@@ -459,7 +461,7 @@
               <img src="icons/dots.png" alt="More">
             </button>
             <div class="dropdown-menu" id="moreMenu">
-              <button data-action="select"><span class="circle-check"><img src="icons/check.png" alt=""></span>Select</button>
+              <button data-action="select"><span class="circle-check"><img src="icons/checkmark.png" alt=""></span>Select</button>
               <div class="dropdown-divider"></div>
               <button data-sort="name-asc"><img src="icons/sort-ascending.png" alt="" class="inline-icon"> Name (A→Z)</button>
               <button data-sort="name-desc"><img src="icons/sort-descending.png" alt="" class="inline-icon"> Name (Z→A)</button>
@@ -490,7 +492,9 @@
 
     <div class="album-shell hidden">
       <div class="album-toolbar">
-        <button id="albumBackBtn" class="drive-back-btn hidden" type="button" aria-label="Back to albums">&lt;</button>
+        <button id="albumBackBtn" class="drive-back-btn hidden" type="button" aria-label="Back to albums">
+          <img src="icons/left.png" alt="Back">
+        </button>
         <div class="photos-header">
           <p class="eyebrow">Library</p>
           <h2 id="photosHeading">Photos</h2>
@@ -501,9 +505,9 @@
               <img src="icons/dots.png" alt="More">
             </button>
             <div class="dropdown-menu" id="albumMoreMenu">
-              <button data-album-action="select"><span class="circle-check"><img src="icons/check.png" alt=""></span>Select Albums</button>
+              <button data-album-action="select"><span class="circle-check"><img src="icons/checkmark.png" alt=""></span>Select Albums</button>
               <div class="dropdown-divider"></div>
-              <button data-album-action="delete"><img src="icons/remove.png" alt="" class="inline-icon"> Delete Album</button>
+              <button data-album-action="delete"><img src="icons/remove-file.png" alt="" class="inline-icon"> Delete Album</button>
             </div>
           </div>
         </div>
@@ -578,7 +582,7 @@
     </div>
     <div class="viewer-actions">
       <button id="actionMoveFolder" type="button" class="icon-btn" title="Move to folder"><img src="icons/folder.png" alt=""></button>
-      <button id="actionAddAlbum" type="button" class="icon-btn" title="Add to album"><img src="icons/add.png" alt=""></button>
+      <button id="actionAddAlbum" type="button" class="icon-btn" title="Add to album"><img src="icons/add-file.png" alt=""></button>
       <button id="actionSave" type="button" class="icon-btn" title="Save to device"><img src="icons/import.png" alt=""></button>
       <button id="actionInfo" type="button" class="icon-btn" title="Details">ℹ️</button>
       <button id="muteToggle" type="button" class="icon-btn hidden" title="Mute/unmute">🔇</button>
@@ -597,8 +601,8 @@
     <button type="button" id="selectionAllBtn">Select All</button>
     <button type="button" data-bulk="move" disabled><img src="icons/folder.png" alt="" class="inline-icon"> Move</button>
     <button type="button" data-bulk="copy" disabled><img src="icons/copy.png" alt="" class="inline-icon"> Copy</button>
-    <button type="button" data-bulk="delete" disabled><img src="icons/remove.png" alt="" class="inline-icon"> Delete</button>
-    <button type="button" data-bulk="album" disabled><img src="icons/add.png" alt="" class="inline-icon"> Add to album</button>
+    <button type="button" data-bulk="delete" disabled><img src="icons/remove-file.png" alt="" class="inline-icon"> Delete</button>
+    <button type="button" data-bulk="album" disabled><img src="icons/add-file.png" alt="" class="inline-icon"> Add to album</button>
   </div>
 </nav>
 
