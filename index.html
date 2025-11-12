@@ -127,7 +127,7 @@
     .drive-header { display:grid; grid-template-columns:auto 1fr auto; align-items:center; gap:16px; margin-bottom:12px; }
     .drive-heading { text-align:center; }
     .drive-back-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:18px; cursor:pointer; display:grid; place-items:center; }
-    .drive-back-btn img { width:24px; height:24px; filter:var(--icon-filter); }
+    .drive-back-btn img { width:30px; height:30px; filter:var(--icon-filter); }
     .drive-back-btn.hidden { visibility:hidden; }
     .drive-actions { display:flex; gap:12px; justify-content:flex-end; align-items:center; }
     .action-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; letter-spacing:1px; }
@@ -643,15 +643,15 @@
 <nav class="bottom-tabs" id="bottomTabs">
   <div class="tab-buttons">
     <button class="active" data-tab="folders">
-      <span class="tab-icon"><img src="icons/folder.png" alt=""></span>
+      <span class="tab-icon"><img src="icons/folder.png" alt="Drive"></span>
       <span>Drive</span>
     </button>
     <button data-tab="albums">
-      <span class="tab-icon"><img src="icons/gallery.png" alt=""></span>
+      <span class="tab-icon"><img src="icons/gallery.png" alt="Photos"></span>
       <span>Photos</span>
     </button>
     <button data-tab="themes">
-      <span class="tab-icon"><img src="icons/settings.png" alt=""></span>
+      <span class="tab-icon"><img src="icons/settings.png" alt="Themes"></span>
       <span>Themes</span>
     </button>
   </div>
@@ -939,8 +939,8 @@ const THEMES = [
       '--card': '#ffffff',
       '--muted': '#64748b',
       '--text': '#0f172a',
-      '--accent': '#2563eb',
-      '--accent-strong': '#1d4ed8',
+      '--accent': '#dfe3eb',
+      '--accent-strong': '#c8ceda',
       '--sidebar': '#e2e8f0',
       '--bg-pattern': 'radial-gradient(circle at top, rgba(37,99,235,.12), transparent 45%)',
       '--icon-filter': 'invert(0)'
