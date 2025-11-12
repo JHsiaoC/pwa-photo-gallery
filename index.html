@@ -132,19 +132,22 @@
     .action-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; letter-spacing:1px; }
     .action-btn img,
     .icon-btn img,
-    .inline-icon {
+    .inline-icon,
+    .drive-back-btn img,
+    .circle-check img,
+    .search-bar .search-icon {
       width:18px;
       height:18px;
       object-fit:contain;
       display:inline-block;
       vertical-align:middle;
       pointer-events:none;
-      filter: invert(1) brightness(1.6);
+      filter: var(--icon-filter);
     }
     .menu-icon { width:18px; height:18px; margin-right:8px; display:inline-flex; }
     .list-icon { width:20px; height:20px; margin-right:10px; display:inline-flex; align-items:center; justify-content:center; }
     .list-icon img { width:100%; height:100%; object-fit:contain; }
-    .search-bar .search-icon { position:absolute; top:50%; left:14px; transform:translateY(-50%); width:18px; height:18px; object-fit:contain; filter: invert(1) brightness(1.6); }
+    .search-bar .search-icon { position:absolute; top:50%; left:14px; transform:translateY(-50%); width:18px; height:18px; object-fit:contain; }
     .ellipsis-icon { font-size:16px; letter-spacing:2px; white-space:nowrap; display:inline-block; transform:translateY(-1px); }
     .circle-check {
       width:22px;
@@ -156,7 +159,7 @@
       justify-content:center;
       margin-right:8px;
     }
-    .circle-check img { width:14px; height:14px; object-fit:contain; filter:invert(1) brightness(1.6); }
+    .circle-check img { width:14px; height:14px; object-fit:contain; }
     .dropdown { position:relative; }
     .dropdown-menu { position:absolute; top:48px; right:0; background:rgba(11,17,31,.95); border:1px solid rgba(148,163,184,.2); border-radius:16px; min-width:220px; padding:8px 0; box-shadow:0 12px 30px rgba(0,0,0,.5); z-index:20; display:none; }
     .dropdown-menu.show { display:block; }
@@ -864,7 +867,8 @@ const THEMES = [
       '--accent': '#38bdf8',
       '--accent-strong': '#0ea5e9',
       '--sidebar': '#0b1220',
-      '--bg-pattern': 'radial-gradient(circle at top, rgba(56,189,248,.25), transparent 45%)'
+      '--bg-pattern': 'radial-gradient(circle at top, rgba(56,189,248,.25), transparent 45%)',
+      '--icon-filter': 'invert(1) brightness(1.6)'
     }
   },
   {
@@ -880,7 +884,8 @@ const THEMES = [
       '--accent': '#ff8fb1',
       '--accent-strong': '#ff5e91',
       '--sidebar': '#2b0018',
-      '--bg-pattern': 'radial-gradient(circle at top, rgba(255,143,177,.35), transparent 45%)'
+      '--bg-pattern': 'radial-gradient(circle at top, rgba(255,143,177,.35), transparent 45%)',
+      '--icon-filter': 'invert(1) brightness(1.6)'
     }
   },
   {
@@ -896,7 +901,8 @@ const THEMES = [
       '--accent': '#5ef1cb',
       '--accent-strong': '#34d1f6',
       '--sidebar': '#041421',
-      '--bg-pattern': 'radial-gradient(circle at top, rgba(94,241,203,.35), transparent 45%)'
+      '--bg-pattern': 'radial-gradient(circle at top, rgba(94,241,203,.35), transparent 45%)',
+      '--icon-filter': 'invert(1) brightness(1.6)'
     }
   }
 ];
