@@ -168,6 +168,33 @@
     .bottom-tabs button.active { background:rgba(56,189,248,.12); color:var(--text); }
     .drive-shell .select-indicator { opacity:0; transition:opacity .2s ease; }
     .drive-shell.selecting .select-indicator { opacity:1; }
+    .album-shell { background: rgba(15,23,42,.75); border-radius: 28px; border:1px solid rgba(148,163,184,.12); box-shadow: 0 20px 60px rgba(0,0,0,.4); padding: 24px; min-height: 60vh; }
+    .photos-header { text-align:center; margin-bottom:16px; }
+    #photosHeading { margin:0; font-size:28px; }
+    .album-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:18px; }
+    @media (max-width: 1024px) {
+      .album-grid { grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); }
+    }
+    .album-card {
+      aspect-ratio: 1;
+      border-radius: 24px;
+      border:1px solid rgba(148,163,184,.2);
+      background: rgba(15,23,42,.85);
+      color: var(--text);
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      gap:12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      cursor:pointer;
+      font-weight:600;
+      text-align:center;
+    }
+    .album-card .count { font-size:12px; color:var(--muted); }
+    .album-card.new { border:1px dashed rgba(148,163,184,.4); color:var(--muted); }
+    .album-card.active { border-color: var(--accent); box-shadow:0 0 0 2px rgba(56,189,248,.4); }
+    .album-empty { text-align:center; padding:24px; color:var(--muted); }
 
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px,1fr)); gap: 12px; margin-top: 18px; }
     .card { position: relative; border-radius: 16px; overflow: hidden; background: var(--card); border: 1px solid rgba(148,163,184,.15); box-shadow: 0 6px 20px rgba(0,0,0,.25); }
@@ -406,15 +433,7 @@
         <label style="display:flex; flex-direction:column; gap:4px;">
           <span>Upload / move to folder</span>
           <select id="folderTarget" class="folder-select">
-            <option value="">Main Library</option>
-          </select>
-        </label>
-      </div>
-      <div id="albumControls" class="control-row hidden">
-        <label style="display:flex; flex-direction:column; gap:4px;">
-          <span>Select album</span>
-          <select id="albumSelect" class="album-select">
-            <option value="">Choose album</option>
+            <option value="">Drive (root)</option>
           </select>
         </label>
       </div>
@@ -424,20 +443,43 @@
         <div id="driveFolders" class="folder-grid"></div>
       </div>
 
-        <div class="drive-section drive-media">
-          <h3>Media</h3>
-          <div id="driveMedia" class="grid" aria-live="polite"></div>
-          <p id="emptyState" class="empty">
-            No media in <strong id="emptyAlbumLabel">Drive</strong> yet.<br>
-            Everything stays on this device (IndexedDB). Works offline.
-          </p>
-          <div id="dropzone" class="dropzone">
+      <div class="drive-section drive-media">
+        <h3>Media</h3>
+        <div id="driveMedia" class="grid" aria-live="polite"></div>
+        <p id="emptyState" class="empty">
+          No media in <strong id="emptyAlbumLabel">Drive</strong> yet.<br>
+          Everything stays on this device (IndexedDB). Works offline.
+        </p>
+        <div id="dropzone" class="dropzone">
           Drag & drop media here or use the <strong>＋</strong> menu — files go to <strong id="dropTargetLabel">Drive</strong>.
-          </div>
         </div>
+      </div>
+    </div>
+
+    <div class="album-shell hidden">
+      <div class="photos-header">
+        <p class="eyebrow">Library</p>
+        <h2 id="photosHeading">Photos</h2>
+      </div>
+      <div id="albumControls" class="control-row hidden">
+        <label style="display:flex; flex-direction:column; gap:4px;">
+          <span>Select album</span>
+          <select id="albumSelect" class="album-select">
+            <option value="">Choose album</option>
+          </select>
+        </label>
+      </div>
+      <div id="albumGrid" class="album-grid"></div>
+      <p id="albumEmpty" class="empty album-empty hidden">No albums yet. Tap <strong>New Album</strong> to create one.</p>
+      <div class="drive-section drive-media">
+        <h3>Album Media</h3>
+        <div id="albumMedia" class="grid" aria-live="polite"></div>
+        <p id="albumMediaEmpty" class="empty">Select an album to view media.</p>
+      </div>
     </div>
   </main>
 </div>
+
 
 
 <p class="footer">PWA • Offline • Installable • Client-side storage</p>
@@ -499,8 +541,7 @@
 
 <nav class="bottom-tabs">
   <button class="active" data-tab="folders">Drive</button>
-  <button data-tab="photos">Photos</button>
-  <button data-tab="albums">Albums</button>
+  <button data-tab="albums">Photos</button>
   <button data-tab="more">More</button>
 </nav>
 
@@ -634,8 +675,8 @@ let activeTab = TAB_FOLDERS;
 let modalContext = 'folder';
 
 const folderListEl = document.getElementById('folderList');
-const albumListEl = document.getElementById('albumList');
 const albumTitleEl = document.getElementById('activeAlbumTitle');
+const photosHeadingEl = document.getElementById('photosHeading');
 const emptyAlbumLabel = document.getElementById('emptyAlbumLabel');
 const dropTargetLabel = document.getElementById('dropTargetLabel');
 const folderSelectEl = document.getElementById('folderTarget');
@@ -679,6 +720,11 @@ const addMenu = document.getElementById('addMenu');
 const moreMenu = document.getElementById('moreMenu');
 const driveShellEl = document.querySelector('.drive-shell');
 const driveBackBtn = document.getElementById('driveBackBtn');
+const albumShellEl = document.querySelector('.album-shell');
+const albumGridEl = document.getElementById('albumGrid');
+const albumEmptyEl = document.getElementById('albumEmpty');
+const albumMediaEl = document.getElementById('albumMedia');
+const albumMediaEmptyEl = document.getElementById('albumMediaEmpty');
 
 let viewerUrl;
 let currentViewList = [];
@@ -881,6 +927,41 @@ function createFolderCard(folder, count = 0) {
   return card;
 }
 
+function renderAlbumGrid() {
+  if (!albumGridEl) return;
+  albumGridEl.innerHTML = '';
+  const emptyMsg = albumEmptyEl;
+  const fragment = document.createDocumentFragment();
+
+  const newCard = document.createElement('button');
+  newCard.type = 'button';
+  newCard.className = 'album-card new';
+  newCard.innerHTML = '<div style="font-size:32px;">＋</div><div class="title">New Album</div>';
+  newCard.addEventListener('click', () => openCreateModal('album'));
+  fragment.appendChild(newCard);
+
+  if (!albums.length) {
+    albumGridEl.appendChild(fragment);
+    emptyMsg?.classList.remove('hidden');
+    return;
+  }
+  emptyMsg?.classList.add('hidden');
+
+  albums.forEach((album) => {
+    const count = albumMembership.get(album.id)?.size || 0;
+    const label = count === 1 ? '1 item' : `${count} items`;
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'album-card' + (album.id === currentAlbumId ? ' active' : '');
+    card.innerHTML = '<div class=\"title\">' + album.name + '</div>' +
+      '<div class=\"count\">' + label + '</div>';
+    card.addEventListener('click', () => setActiveAlbum(album.id));
+    fragment.appendChild(card);
+  });
+
+  albumGridEl.appendChild(fragment);
+}
+
 function setActiveFolder(value) {
   let target = value;
   if (value === SPECIAL_ALL || value === String(SPECIAL_ALL)) {
@@ -891,6 +972,9 @@ function setActiveFolder(value) {
     target = Number(value);
   }
   currentFolder = target;
+  if (folderSelectEl) {
+    folderSelectEl.value = typeof target === 'number' ? String(target) : '';
+  }
   if (driveSearchInput) driveSearchInput.value = '';
   driveSearchTerm = '';
   selectedFolders.clear();
@@ -934,7 +1018,7 @@ async function loadCollections() {
     currentAlbumId = null;
   }
   renderAlbumSelect();
-  renderAlbumNav();
+  renderAlbumGrid();
 }
 
 function renderAlbumSelect() {
@@ -959,47 +1043,17 @@ function renderAlbumSelect() {
 }
 
 function renderAlbumNav() {
-  if (!albumListEl) return;
-  albumListEl.innerHTML = '';
-  if (!albums.length) {
-    const empty = document.createElement('p');
-    empty.className = 'empty';
-    empty.textContent = 'No albums yet. Create one to start curating.';
-    albumListEl.appendChild(empty);
-    return;
-  }
-  for (const album of albums) {
-    const count = albumMembership.get(album.id)?.size || 0;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'album-item' + (currentAlbumId === album.id ? ' active' : '');
-    btn.dataset.album = String(album.id);
-    const icon = document.createElement('span');
-    icon.className = 'album-icon';
-    icon.textContent = '⭐';
-    const meta = document.createElement('div');
-    meta.className = 'album-meta';
-    const title = document.createElement('strong');
-    title.textContent = album.name;
-    const countLabel = document.createElement('span');
-    countLabel.textContent = count ? `${count} item${count === 1 ? '' : 's'}` : 'Empty';
-    meta.append(title, countLabel);
-    btn.append(icon, meta);
-    albumListEl.appendChild(btn);
-  }
+  renderAlbumSelect();
+  renderAlbumGrid();
 }
 
-albumListEl?.addEventListener('click', (event) => {
-  const target = event.target.closest('button[data-album]');
-  if (!target) return;
-  setActiveAlbum(Number(target.dataset.album));
-});
+
 
 function setActiveAlbum(id) {
   currentAlbumId = id || null;
   setActiveTab(TAB_ALBUMS);
   if (!photoViewer.classList.contains('hidden')) closeViewer();
-  renderAlbumNav();
+  renderAlbumGrid();
   renderAlbumSelect();
   updateHeader();
   renderGallery();
@@ -1013,6 +1067,8 @@ function albumTitleFor(id) {
 function setActiveTab(tab) {
   activeTab = tab;
   tabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
+  driveShellEl?.classList.toggle('hidden', tab !== TAB_FOLDERS);
+  albumShellEl?.classList.toggle('hidden', tab !== TAB_ALBUMS);
   folderControlsEl?.classList.toggle('hidden', tab !== TAB_FOLDERS);
   albumControlsEl?.classList.toggle('hidden', tab !== TAB_ALBUMS);
   if (tab !== TAB_FOLDERS && selectionMode) {
@@ -1024,8 +1080,8 @@ function setActiveTab(tab) {
   }
   updateHeader();
   renderFolderList();
-  renderAlbumNav();
   renderDriveFolders();
+  renderAlbumGrid();
   renderGallery();
 }
 
@@ -1063,14 +1119,17 @@ function updateHeader() {
     const title = folderTitleFor(currentFolder);
     albumTitleEl.textContent = title;
     emptyAlbumLabel.textContent = title;
+    if (photosHeadingEl) photosHeadingEl.textContent = 'Photos';
   } else {
     if (currentAlbumId) {
       const title = albumTitleFor(currentAlbumId);
       albumTitleEl.textContent = title;
       emptyAlbumLabel.textContent = title;
+      if (photosHeadingEl) photosHeadingEl.textContent = title;
     } else {
-      albumTitleEl.textContent = 'Select an album';
-      emptyAlbumLabel.textContent = 'Select an album';
+      albumTitleEl.textContent = 'Photos';
+      emptyAlbumLabel.textContent = 'Photos';
+      if (photosHeadingEl) photosHeadingEl.textContent = 'Photos';
     }
   }
   updateDropHint();
@@ -1233,6 +1292,7 @@ document.addEventListener('click', (e) => {
 });
 
 driveBackBtn?.addEventListener('click', () => {
+  if (selectionMode) toggleSelectionMode(false);
   if (currentFolder === SPECIAL_ALL) return;
   const parentId = getFolderParentId(currentFolder);
   if (parentId == null) {
@@ -1424,13 +1484,23 @@ async function refreshGallery() {
 }
 
 function renderGallery() {
-  if (!driveMediaEl) return;
-  const empty = document.getElementById('emptyState');
-  driveMediaEl.innerHTML = '';
-  driveMediaEl.classList.toggle('list-view', driveViewMode === 'list');
-  dz?.classList.toggle('hidden', activeTab !== TAB_FOLDERS);
+  const isDrive = activeTab === TAB_FOLDERS;
+  const container = isDrive ? driveMediaEl : albumMediaEl;
+  if (!container) return;
+  const driveEmpty = document.getElementById('emptyState');
+  const albumEmpty = albumMediaEmptyEl;
+  if (isDrive && driveMediaEl) {
+    driveMediaEl.classList.toggle('list-view', driveViewMode === 'list');
+  }
+  if (!isDrive) {
+    driveEmpty?.classList.add('hidden');
+  } else {
+    albumEmpty?.classList.add('hidden');
+  }
+  container.innerHTML = '';
+  dz?.classList.toggle('hidden', !isDrive);
   let list = [];
-  if (activeTab === TAB_FOLDERS) {
+  if (isDrive) {
     if (typeof currentFolder === 'number') {
       list = photoCache.filter(item => item.folderId === currentFolder);
     } else {
@@ -1438,32 +1508,45 @@ function renderGallery() {
     }
   } else {
     if (!currentAlbumId) {
-      empty.classList.remove('hidden');
-      empty.innerHTML = 'Select an album to view media.';
+      if (albumEmpty) {
+        albumEmpty.textContent = 'Select an album to view media.';
+        albumEmpty.classList.remove('hidden');
+      }
       currentViewList = [];
       return;
     }
     const ids = albumMembership.get(currentAlbumId);
     if (!ids || !ids.size) {
-      empty.classList.remove('hidden');
-      empty.innerHTML = 'This album is empty.';
+      if (albumEmpty) {
+        albumEmpty.textContent = 'This album is empty.';
+        albumEmpty.classList.remove('hidden');
+      }
       currentViewList = [];
       return;
     }
     list = photoCache.filter(item => ids.has(item.id));
   }
-  if (activeTab === TAB_FOLDERS && driveSearchTerm) {
+  if (isDrive && driveSearchTerm) {
     const term = driveSearchTerm.toLowerCase();
     list = list.filter(item => (item.name || '').toLowerCase().includes(term));
   }
   list = sortPhotos(list);
   currentViewList = list;
   if (!list.length) {
-    empty.classList.remove('hidden');
-    empty.innerHTML = 'No media in <strong>' + emptyAlbumLabel.textContent + '</strong> yet.';
+    if (isDrive && driveEmpty) {
+      driveEmpty.classList.remove('hidden');
+      driveEmpty.innerHTML = 'No media in <strong>' + emptyAlbumLabel.textContent + '</strong> yet.';
+    } else if (!isDrive && albumEmpty) {
+      albumEmpty.textContent = 'This album is empty.';
+      albumEmpty.classList.remove('hidden');
+    }
     return;
   }
-  empty.classList.add('hidden');
+  if (isDrive) {
+    driveEmpty?.classList.add('hidden');
+  } else {
+    albumEmpty?.classList.add('hidden');
+  }
   list.forEach((item, idx) => {
     const url = URL.createObjectURL(item.blob);
     const isVideo = item.kind === 'video' || item.type?.startsWith('video/');
@@ -1508,7 +1591,7 @@ function renderGallery() {
     meta.append(label, chip);
     card.appendChild(meta);
     card.addEventListener('click', () => openViewerAt(idx));
-    driveMediaEl.appendChild(card);
+    container.appendChild(card);
   });
 }
 
