@@ -543,6 +543,8 @@
     <button data-tab="more">More</button>
   </div>
   <div class="selection-actions hidden" id="selectionActions">
+    <button type="button" id="selectionCancelBtn">Cancel</button>
+    <button type="button" id="selectionAllBtn">Select All</button>
     <button type="button" data-bulk="move" disabled>📂 Move</button>
     <button type="button" data-bulk="copy" disabled>📄 Copy</button>
     <button type="button" data-bulk="delete" disabled>🗑 Delete</button>
@@ -695,6 +697,8 @@ const bottomTabsEl = document.getElementById('bottomTabs');
 const selectionActionsEl = document.getElementById('selectionActions');
 const tabButtons = document.querySelectorAll('.tab-buttons button[data-tab]');
 const selectionActionButtons = selectionActionsEl ? Array.from(selectionActionsEl.querySelectorAll('button[data-bulk]')) : [];
+const selectionCancelBtn = document.getElementById('selectionCancelBtn');
+const selectionAllBtn = document.getElementById('selectionAllBtn');
 const modal = document.getElementById('albumModal');
 const albumModalTitle = document.getElementById('albumModalTitle');
 const albumForm = document.getElementById('albumForm');
@@ -746,6 +750,8 @@ let selectionMode = false;
 let selectedFolders = new Set();
 let selectedMedia = new Set();
 let driveSearchTerm = '';
+let visibleFolderIds = [];
+let visibleMediaIds = [];
 const SETTINGS_KEY = 'pwa-photo-gallery-settings';
 const defaultSettings = { namingScheme: '{{original}}', counter: 1 };
 let settings = loadSettings();
@@ -940,6 +946,10 @@ function renderAlbumGrid() {
   if (!albumGridEl) return;
   const showingAlbums = !currentAlbumId;
   albumGridEl.classList.toggle('hidden', !showingAlbums);
+  if (showingAlbums) {
+    albumMediaPanel?.classList.add('hidden');
+    albumBackBtn?.classList.add('hidden');
+  }
   if (!showingAlbums) {
     albumEmptyEl?.classList.add('hidden');
     return;
@@ -1439,6 +1449,14 @@ selectionActionsEl?.addEventListener('click', async (e) => {
   await handleBulkAction(btn.dataset.bulk);
 });
 
+selectionCancelBtn?.addEventListener('click', () => {
+  toggleSelectionMode(false);
+});
+
+selectionAllBtn?.addEventListener('click', () => {
+  selectAllVisible();
+});
+
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.dropdown')) closeMenus();
 });
@@ -1655,19 +1673,20 @@ function renderGallery() {
       childFolders = childFolders.filter(folder => folder.name.toLowerCase().includes(term));
     }
     childFolders.sort((a, b) => a.name.localeCompare(b.name));
-    const visibleIds = new Set(childFolders.map(f => f.id));
-    selectedFolders.forEach(id => { if (!visibleIds.has(id)) selectedFolders.delete(id); });
+  const visibleIds = new Set(childFolders.map(f => f.id));
+  selectedFolders.forEach(id => { if (!visibleIds.has(id)) selectedFolders.delete(id); });
+  visibleFolderIds = childFolders.map(folder => folder.id);
 
-    let mediaList = typeof currentFolder === 'number'
-      ? photoCache.filter(item => item.folderId === currentFolder)
-      : photoCache.filter(item => item.folderId == null);
+  let mediaList = typeof currentFolder === 'number'
+    ? photoCache.filter(item => item.folderId === currentFolder)
+    : photoCache.filter(item => item.folderId == null);
     if (driveSearchTerm) {
       const term = driveSearchTerm.toLowerCase();
       mediaList = mediaList.filter(item => (item.name || '').toLowerCase().includes(term));
-    }
-    mediaList = sortPhotos(mediaList);
-    currentViewList = mediaList;
-    const visibleMediaIds = new Set(mediaList.map(item => item.id));
+  }
+  mediaList = sortPhotos(mediaList);
+  currentViewList = mediaList;
+  visibleMediaIds = mediaList.map(item => item.id);
     selectedMedia = new Set([...selectedMedia].filter(id => visibleMediaIds.has(id)));
 
     if (!childFolders.length && !mediaList.length) {
@@ -1682,8 +1701,10 @@ function renderGallery() {
     }
     driveEmpty?.classList.add('hidden');
     const fragment = document.createDocumentFragment();
+    visibleFolderIds = childFolders.map(folder => folder.id);
     childFolders.forEach(folder => fragment.appendChild(createFolderCard(folder, counts[folder.id] || 0)));
     mediaList.forEach((item, idx) => fragment.appendChild(createMediaTile(item, idx)));
+    visibleMediaIds = mediaList.map(item => item.id);
     container.appendChild(fragment);
     updateSelectionChrome();
     return;
@@ -1698,6 +1719,8 @@ function renderGallery() {
   if (!viewingAlbum) {
     albumMediaEmptyEl?.classList.add('hidden');
     currentViewList = [];
+    visibleFolderIds = [];
+    visibleMediaIds = [];
     updateSelectionChrome();
     return;
   }
@@ -1705,13 +1728,17 @@ function renderGallery() {
   if (!ids || !ids.size) {
     albumMediaEmptyEl?.classList.remove('hidden');
     currentViewList = [];
+    visibleFolderIds = [];
+    visibleMediaIds = [];
     updateSelectionChrome();
     return;
   }
+  visibleFolderIds = [];
   albumMediaEmptyEl?.classList.add('hidden');
   let list = photoCache.filter(item => ids.has(item.id));
   list = sortPhotos(list);
   currentViewList = list;
+  visibleMediaIds = list.map(item => item.id);
   albumEmpty?.classList.add('hidden');
   list.forEach((item, idx) => {
     const url = URL.createObjectURL(item.blob);
@@ -2023,6 +2050,21 @@ function toggleSelectionMode(force) {
   driveShellEl?.classList.toggle('selecting', selectionMode);
   updateSelectionChrome();
   renderGallery();
+}
+
+function selectAllVisible() {
+  const hasAny = visibleFolderIds.length || visibleMediaIds.length;
+  if (!hasAny) {
+    alert('Nothing to select here.');
+    return;
+  }
+  if (!selectionMode) {
+    toggleSelectionMode(true);
+  }
+  selectedFolders = new Set(visibleFolderIds);
+  selectedMedia = new Set(visibleMediaIds);
+  renderGallery();
+  updateSelectionChrome();
 }
 
 function onViewerPointerDown(e) {
