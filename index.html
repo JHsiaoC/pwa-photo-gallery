@@ -1723,21 +1723,22 @@ function renderGallery() {
       childFolders = childFolders.filter(folder => folder.name.toLowerCase().includes(term));
     }
     childFolders.sort((a, b) => a.name.localeCompare(b.name));
-  const visibleIds = new Set(childFolders.map(f => f.id));
-  selectedFolders.forEach(id => { if (!visibleIds.has(id)) selectedFolders.delete(id); });
-  visibleFolderIds = childFolders.map(folder => folder.id);
+    const visibleFolderSet = new Set(childFolders.map(f => f.id));
+    selectedFolders.forEach(id => { if (!visibleFolderSet.has(id)) selectedFolders.delete(id); });
+    visibleFolderIds = childFolders.map(folder => folder.id);
 
-  let mediaList = typeof currentFolder === 'number'
-    ? photoCache.filter(item => item.folderId === currentFolder)
-    : photoCache.filter(item => item.folderId == null);
+    let mediaList = typeof currentFolder === 'number'
+      ? photoCache.filter(item => item.folderId === currentFolder)
+      : photoCache.filter(item => item.folderId == null);
     if (driveSearchTerm) {
       const term = driveSearchTerm.toLowerCase();
       mediaList = mediaList.filter(item => (item.name || '').toLowerCase().includes(term));
-  }
-  mediaList = sortPhotos(mediaList);
-  currentViewList = mediaList;
-  visibleMediaIds = mediaList.map(item => item.id);
-    selectedMedia = new Set([...selectedMedia].filter(id => visibleMediaIds.has(id)));
+    }
+    mediaList = sortPhotos(mediaList);
+    currentViewList = mediaList;
+    visibleMediaIds = mediaList.map(item => item.id);
+    const visibleMediaSet = new Set(visibleMediaIds);
+    selectedMedia = new Set([...selectedMedia].filter(id => visibleMediaSet.has(id)));
 
     if (!childFolders.length && !mediaList.length) {
       if (driveEmpty) {
@@ -1751,10 +1752,8 @@ function renderGallery() {
     }
     driveEmpty?.classList.add('hidden');
     const fragment = document.createDocumentFragment();
-    visibleFolderIds = childFolders.map(folder => folder.id);
     childFolders.forEach(folder => fragment.appendChild(createFolderCard(folder, counts[folder.id] || 0)));
     mediaList.forEach((item, idx) => fragment.appendChild(createMediaTile(item, idx)));
-    visibleMediaIds = mediaList.map(item => item.id);
     container.appendChild(fragment);
     updateSelectionChrome();
     return;
