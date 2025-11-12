@@ -511,12 +511,15 @@
           <h2 id="photosHeading">Photos</h2>
         </div>
         <div class="album-actions">
+          <button class="action-btn" id="albumSelectBtn" type="button" aria-label="Select albums">
+            <span class="circle-check"><img src="icons/checkmark.png" alt=""></span>
+          </button>
           <div class="dropdown">
             <button class="action-btn" id="albumMoreBtn" aria-haspopup="true" aria-expanded="false" aria-label="Album actions">
               <img src="icons/dots.png" alt="More">
             </button>
             <div class="dropdown-menu" id="albumMoreMenu">
-              <button data-album-action="select"><span class="circle-check"><img src="icons/checkmark.png" alt=""></span>Select Albums</button>
+              <button data-album-action="media-select"><span class="circle-check"><img src="icons/checkmark.png" alt=""></span>Select</button>
               <div class="dropdown-divider"></div>
               <button data-album-sort="name-asc"><img src="icons/sort-ascending.png" alt="" class="inline-icon"> Name (A→Z)</button>
               <button data-album-sort="name-desc"><img src="icons/sort-descending.png" alt="" class="inline-icon"> Name (Z→A)</button>
@@ -822,6 +825,7 @@ const albumMediaPanel = document.getElementById('albumMediaPanel');
 const albumMediaEl = document.getElementById('albumMedia');
 const albumMediaEmptyEl = document.getElementById('albumMediaEmpty');
 const albumBackBtn = document.getElementById('albumBackBtn');
+const albumSelectBtn = document.getElementById('albumSelectBtn');
 const albumMoreBtn = document.getElementById('albumMoreBtn');
 const albumMoreMenu = document.getElementById('albumMoreMenu');
 const themeShellEl = document.querySelector('.theme-shell');
@@ -843,7 +847,7 @@ let visibleAlbumIds = [];
 let albumSortMode = 'name-asc';
 let albumViewMode = 'grid';
 const SETTINGS_KEY = 'pwa-photo-gallery-settings';
-const defaultSettings = { namingScheme: '{{original}}', counter: 1, theme: 'deep-space' };
+const defaultSettings = { namingScheme: '{{original}}', counter: 1, theme: 'dark' };
 let settings = loadSettings();
 let chromeHidden = false;
 let isZoomed = false;
@@ -855,9 +859,9 @@ const gesture = { active: false, pointerId: null, startX: 0, startY: 0, initialX
 
 const THEMES = [
   {
-    id: 'deep-space',
-    name: 'Deep Space',
-    description: 'Original navy gradient',
+    id: 'dark',
+    name: 'Midnight',
+    description: 'Deep navy system default',
     preview: ['#050812', '#0f172a'],
     vars: {
       '--bg': '#050812',
@@ -872,20 +876,20 @@ const THEMES = [
     }
   },
   {
-    id: 'sunset',
-    name: 'Sunset Bloom',
-    description: 'Warm pink to orange',
-    preview: ['#220016', '#6b112c'],
+    id: 'light',
+    name: 'Aurora Light',
+    description: 'Bright neutral workstation',
+    preview: ['#f8fafc', '#e2e8f0'],
     vars: {
-      '--bg': '#20000f',
-      '--card': '#2f0a1b',
-      '--muted': '#f9c6d0',
-      '--text': '#fff4f7',
-      '--accent': '#ff8fb1',
-      '--accent-strong': '#ff5e91',
-      '--sidebar': '#2b0018',
-      '--bg-pattern': 'radial-gradient(circle at top, rgba(255,143,177,.35), transparent 45%)',
-      '--icon-filter': 'invert(1) brightness(1.6)'
+      '--bg': '#f8fafc',
+      '--card': '#ffffff',
+      '--muted': '#64748b',
+      '--text': '#0f172a',
+      '--accent': '#2563eb',
+      '--accent-strong': '#1d4ed8',
+      '--sidebar': '#e2e8f0',
+      '--bg-pattern': 'radial-gradient(circle at top, rgba(37,99,235,.12), transparent 45%)',
+      '--icon-filter': 'invert(0)'
     }
   },
   {
@@ -1746,6 +1750,14 @@ albumMoreBtn?.addEventListener('click', (e) => {
   toggleMenu(albumMoreMenu, albumMoreBtn);
 });
 
+albumSelectBtn?.addEventListener('click', () => {
+  if (currentAlbumId) {
+    alert('Use the menu inside an album to select media.');
+    return;
+  }
+  toggleSelectionMode();
+});
+
 addMenu?.addEventListener('click', (e) => {
   const button = e.target.closest('button[data-add]');
   if (!button) return;
@@ -1776,13 +1788,12 @@ moreMenu?.addEventListener('click', (e) => {
 albumMoreMenu?.addEventListener('click', (e) => {
   const targetBtn = e.target.closest('button[data-album-action]');
   if (!targetBtn) return;
-  if (targetBtn.dataset.albumAction === 'select') {
+  if (targetBtn.dataset.albumAction === 'media-select') {
     if (currentAlbumId) {
-      alert('Return to the album grid to select multiple albums.');
-      closeMenus();
-      return;
+      toggleSelectionMode();
+    } else {
+      alert('Enter an album to select media, or use the Select button to choose albums.');
     }
-    toggleSelectionMode();
     closeMenus();
     return;
   }
