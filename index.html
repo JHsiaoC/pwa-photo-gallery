@@ -616,6 +616,16 @@
   </div>
 </div>
 
+<div id="listPickerModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="listPickerTitle">
+  <div class="modal-card">
+    <h3 id="listPickerTitle">Select destination</h3>
+    <div id="listPickerList" class="picker-list"></div>
+    <div class="modal-actions">
+      <button type="button" id="listPickerCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div id="photoViewer" class="photo-viewer hidden" role="dialog" aria-modal="true" aria-labelledby="viewerTitle">
   <div class="viewer-frame">
     <div class="viewer-top">
@@ -836,6 +846,10 @@ const textFileForm = document.getElementById('textFileForm');
 const textFileNameInput = document.getElementById('textFileName');
 const textFileContentInput = document.getElementById('textFileContent');
 const textFileCancel = document.getElementById('textFileCancel');
+const listPickerModal = document.getElementById('listPickerModal');
+const listPickerTitle = document.getElementById('listPickerTitle');
+const listPickerList = document.getElementById('listPickerList');
+const listPickerCancel = document.getElementById('listPickerCancel');
 const modal = document.getElementById('albumModal');
 const albumModalTitle = document.getElementById('albumModalTitle');
 const albumForm = document.getElementById('albumForm');
@@ -1072,6 +1086,47 @@ textFileForm?.addEventListener('submit', (e) => {
     return;
   }
   closeTextFileModal({ name, content: textFileContentInput.value || '' });
+});
+
+function openListPicker({ title, items }) {
+  if (!listPickerModal) return Promise.resolve(null);
+  listPickerTitle.textContent = title || 'Select option';
+  listPickerList.innerHTML = '';
+  const buttons = [];
+  (items || []).forEach((item) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = item.label;
+    btn.addEventListener('click', () => closeListPicker(item.value));
+    buttons.push(btn);
+    listPickerList.appendChild(btn);
+  });
+  if (!buttons.length) {
+    const empty = document.createElement('p');
+    empty.className = 'empty';
+    empty.textContent = 'No options available.';
+    listPickerList.appendChild(empty);
+  }
+  listPickerModal.classList.remove('hidden');
+  return new Promise((resolve) => {
+    listPickerModal.dataset.resolver = '1';
+    listPickerModalResolver = resolve;
+  });
+}
+
+let listPickerModalResolver = null;
+
+function closeListPicker(value) {
+  if (listPickerModal) listPickerModal.classList.add('hidden');
+  if (listPickerModalResolver) {
+    listPickerModalResolver(value ?? null);
+    listPickerModalResolver = null;
+  }
+}
+
+listPickerCancel?.addEventListener('click', () => closeListPicker(null));
+listPickerModal?.addEventListener('click', (e) => {
+  if (e.target === listPickerModal) closeListPicker(null);
 });
 
 (async () => {
@@ -1520,7 +1575,7 @@ function gatherAlbumPhotoIds(set = selectedAlbums) {
 
 async function copyAlbumsToFolderSelected() {
   if (!selectedAlbums.size) return alert('Select albums first.');
-  const targetFolder = pickFolderDestination();
+  const targetFolder = await pickFolderDestination();
   if (targetFolder === undefined) return;
   const photoIds = gatherAlbumPhotoIds();
   if (!photoIds.size) return alert('Selected albums do not contain media.');
@@ -1551,7 +1606,7 @@ async function copyAlbumsToFolderSelected() {
 
 async function copyAlbumsToAlbumSelected() {
   if (!selectedAlbums.size) return alert('Select albums first.');
-  const dest = pickAlbumDestination();
+  const dest = await pickAlbumDestination();
   if (!dest) return;
   const targetAlbum = Number(dest);
   const photoIds = gatherAlbumPhotoIds();
@@ -1577,44 +1632,25 @@ async function copyAlbumsToAlbumSelected() {
   toggleSelectionMode(false);
 }
 
-function pickFolderDestination() {
+async function pickFolderDestination() {
   if (!folders.length) {
-    return confirm('No folders available. Move to Drive (root)?') ? null : undefined;
+    alert('No folders available yet.');
+    return undefined;
   }
-  const listing = folders.map((folder, idx) => `${idx + 1}. ${folder.name}`).join('\n');
-  const promptText = `Move to folder:\n0. Drive (root)\n${listing}`;
-  const input = prompt(promptText, '0');
-  if (input === null) return undefined;
-  const trimmed = input.trim();
-  if (!trimmed || trimmed === '0') return null;
-  const asNumber = Number(trimmed);
-  if (!Number.isNaN(asNumber) && asNumber >= 1 && asNumber <= folders.length) {
-    return folders[asNumber - 1].id;
-  }
-  const match = folders.find(folder => folder.name.toLowerCase() === trimmed.toLowerCase());
-  if (match) return match.id;
-  alert('Folder not found.');
-  return undefined;
+  const options = [
+    { label: 'Drive (root)', value: null },
+    ...folders.map(folder => ({ label: folder.name, value: folder.id }))
+  ];
+  return openListPicker({ title: 'Move to folder', items: options });
 }
 
-function pickAlbumDestination() {
+async function pickAlbumDestination() {
   if (!albums.length) {
     alert('Create an album first.');
     return undefined;
   }
-  const listing = albums.map((album, idx) => `${idx + 1}. ${album.name}`).join('\n');
-  const input = prompt(`Add to album:\n${listing}`, '1');
-  if (input === null) return undefined;
-  const trimmed = input.trim();
-  if (!trimmed) return undefined;
-  const asNumber = Number(trimmed);
-  if (!Number.isNaN(asNumber) && asNumber >= 1 && asNumber <= albums.length) {
-    return albums[asNumber - 1].id;
-  }
-  const match = albums.find(album => album.name.toLowerCase() === trimmed.toLowerCase());
-  if (match) return match.id;
-  alert('Album not found.');
-  return undefined;
+  const options = albums.map(album => ({ label: album.name, value: album.id }));
+  return openListPicker({ title: 'Choose album', items: options });
 }
 
 function getSelectedMediaItems() {
@@ -1682,7 +1718,7 @@ async function handleBulkAction(action) {
 async function bulkMoveSelected() {
   const items = getSelectedMediaItems();
   if (!items.length) return alert('Select media first.');
-  const targetFolder = pickFolderDestination();
+  const targetFolder = await pickFolderDestination();
   if (targetFolder === undefined) return;
   await Promise.all(items.map(item => idbPut(db, STORE, { ...item, folderId: targetFolder })));
   selectedMedia.clear();
@@ -1693,7 +1729,7 @@ async function bulkMoveSelected() {
 async function bulkCopySelected() {
   const items = getSelectedMediaItems();
   if (!items.length) return alert('Select media first.');
-  const targetFolder = pickFolderDestination();
+  const targetFolder = await pickFolderDestination();
   if (targetFolder === undefined) return;
   for (const item of items) {
     const clone = {
@@ -1746,7 +1782,7 @@ async function bulkAddToAlbumSelected() {
   if (!items.length) return alert('Select media first.');
   let albumId = currentAlbumId;
   if (!albumId) {
-    albumId = pickAlbumDestination();
+    albumId = await pickAlbumDestination();
   }
   if (albumId === undefined) return;
   const membership = albumMembership.get(albumId) || new Set();
@@ -2712,10 +2748,10 @@ function resetGesture() {
   gesture.pointerId = null;
 }
 
-function handleMoveToFolder() {
+async function handleMoveToFolder() {
   const current = getCurrentItem();
   if (!current) return alert('Open a photo or video first.');
-  const targetFolder = pickFolderDestination();
+  const targetFolder = await pickFolderDestination();
   if (targetFolder === undefined) return;
   if ((current.folderId ?? null) === targetFolder) {
     alert('Already in that folder.');
@@ -2734,7 +2770,7 @@ function handleAddToAlbum() {
   if (!current) return alert('Open a photo or video first.');
   let selected = currentAlbumId;
   if (!selected) {
-    const choice = pickAlbumDestination();
+    const choice = await pickAlbumDestination();
     if (choice === undefined) return;
     selected = choice;
   }
@@ -2905,3 +2941,6 @@ async function exportZip() {
 </html>
     .tab-icon { width:20px; height:20px; display:flex; align-items:center; justify-content:center; }
     .tab-icon img { width:18px; height:18px; object-fit:contain; filter:var(--icon-filter); }
+    .picker-list { display:flex; flex-direction:column; gap:8px; max-height:50vh; overflow-y:auto; margin-top:12px; }
+    .picker-list button { width:100%; text-align:left; padding:10px 14px; border-radius:12px; border:1px solid rgba(148,163,184,.25); background:rgba(15,23,42,.75); color:var(--text); font-weight:600; }
+    .picker-list button:hover { border-color:var(--accent); }
