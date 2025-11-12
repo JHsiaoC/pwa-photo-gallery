@@ -192,8 +192,9 @@
     .album-shell { background: rgba(15,23,42,.75); border-radius: 28px; border:1px solid rgba(148,163,184,.12); box-shadow: 0 20px 60px rgba(0,0,0,.4); padding: 24px; min-height: 60vh; }
     .photos-header { text-align:center; margin-bottom:16px; }
     #photosHeading { margin:0; font-size:28px; }
-    .album-toolbar { display:flex; align-items:center; justify-content:center; gap:12px; margin-bottom:16px; }
-    .album-toolbar .photos-header { flex:1; margin-bottom:0; }
+    .album-toolbar { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+    .album-toolbar .photos-header { flex:1; margin-bottom:0; text-align:center; }
+    .album-toolbar .album-actions { display:flex; gap:12px; }
     .album-media-panel { margin-top:20px; }
     .album-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:18px; }
     @media (max-width: 1024px) {
@@ -466,6 +467,14 @@
           <p class="eyebrow">Library</p>
           <h2 id="photosHeading">Photos</h2>
         </div>
+        <div class="album-actions">
+          <div class="dropdown">
+            <button class="action-btn" id="albumMoreBtn" aria-haspopup="true" aria-expanded="false" aria-label="Album actions"><span class="ellipsis-icon">···</span></button>
+            <div class="dropdown-menu" id="albumMoreMenu">
+              <button data-album-action="delete">🗑 Delete Album</button>
+            </div>
+          </div>
+        </div>
       </div>
       <div id="albumGrid" class="album-grid"></div>
       <p id="albumEmpty" class="empty album-empty hidden">No albums yet. Tap <strong>New Album</strong> to create one.</p>
@@ -731,6 +740,8 @@ const primaryAddBtn = document.getElementById('primaryAddBtn');
 const moreActionsBtn = document.getElementById('moreActionsBtn');
 const addMenu = document.getElementById('addMenu');
 const moreMenu = document.getElementById('moreMenu');
+const albumMoreBtn = document.getElementById('albumMoreBtn');
+const albumMoreMenu = document.getElementById('albumMoreMenu');
 const driveShellEl = document.querySelector('.drive-shell');
 const driveBackBtn = document.getElementById('driveBackBtn');
 const albumShellEl = document.querySelector('.album-shell');
@@ -949,6 +960,7 @@ function renderAlbumGrid() {
   if (showingAlbums) {
     albumMediaPanel?.classList.add('hidden');
     albumBackBtn?.classList.add('hidden');
+    albumMoreBtn?.classList.add('hidden');
   }
   if (!showingAlbums) {
     albumEmptyEl?.classList.add('hidden');
@@ -1307,6 +1319,29 @@ async function bulkAddToAlbumSelected() {
   alert('Added to album.');
 }
 
+async function handleDeleteAlbum() {
+  if (!currentAlbumId) {
+    alert('Open an album first.');
+    return;
+  }
+  const albumId = currentAlbumId;
+  const album = albums.find(a => a.id === albumId);
+  const name = album?.name || 'Album';
+  if (!confirm(`Delete "${name}"? This removes the album but keeps all media intact.`)) return;
+  const members = albumMembership.get(albumId) || new Set();
+  for (const photoId of members) {
+    const key = `${albumId}-${photoId}`;
+    await idbDelete(db, COLLECTION_ITEMS_STORE, key);
+  }
+  await idbDelete(db, COLLECTION_STORE, albumId);
+  currentAlbumId = null;
+  await loadCollections();
+  renderAlbumGrid();
+  renderGallery();
+  updateHeader();
+  alert('Album deleted.');
+}
+
 function updateBackButton() {
   if (!driveBackBtn) return;
   const showBack = activeTab === TAB_FOLDERS && typeof currentFolder === 'number';
@@ -1416,6 +1451,12 @@ moreActionsBtn?.addEventListener('click', (e) => {
   toggleMenu(moreMenu, moreActionsBtn);
 });
 
+albumMoreBtn?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (albumMoreBtn.classList.contains('hidden') || albumMoreBtn.classList.contains('disabled')) return;
+  toggleMenu(albumMoreMenu, albumMoreBtn);
+});
+
 addMenu?.addEventListener('click', (e) => {
   const button = e.target.closest('button[data-add]');
   if (!button) return;
@@ -1440,6 +1481,15 @@ moreMenu?.addEventListener('click', (e) => {
     toggleSelectionMode();
     closeMenus();
     return;
+  }
+});
+
+albumMoreMenu?.addEventListener('click', (e) => {
+  const targetBtn = e.target.closest('button[data-album-action]');
+  if (!targetBtn) return;
+  if (targetBtn.dataset.albumAction === 'delete') {
+    handleDeleteAlbum();
+    closeMenus();
   }
 });
 
@@ -1716,6 +1766,7 @@ function renderGallery() {
   const viewingAlbum = !!currentAlbumId;
   albumMediaPanel?.classList.toggle('hidden', !viewingAlbum);
   albumBackBtn?.classList.toggle('hidden', !viewingAlbum);
+  albumMoreBtn?.classList.toggle('hidden', !viewingAlbum);
   if (!viewingAlbum) {
     albumMediaEmptyEl?.classList.add('hidden');
     currentViewList = [];
@@ -1988,8 +2039,10 @@ function toggleMenu(menu, button) {
 function closeMenus() {
   addMenu?.classList.remove('show');
   moreMenu?.classList.remove('show');
+  albumMoreMenu?.classList.remove('show');
   primaryAddBtn?.setAttribute('aria-expanded', 'false');
   moreActionsBtn?.setAttribute('aria-expanded', 'false');
+  albumMoreBtn?.setAttribute('aria-expanded', 'false');
 }
 
 function handleAddAction(action) {
