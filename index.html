@@ -127,6 +127,17 @@
     .drive-actions { display:flex; gap:12px; justify-content:flex-end; align-items:center; }
     .action-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; letter-spacing:1px; }
     .ellipsis-icon { font-size:16px; letter-spacing:2px; white-space:nowrap; display:inline-block; transform:translateY(-1px); }
+    .circle-check {
+      width:18px;
+      height:18px;
+      border-radius:50%;
+      border:1.5px solid rgba(148,163,184,.7);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      font-size:11px;
+      margin-right:8px;
+    }
     .dropdown { position:relative; }
     .dropdown-menu { position:absolute; top:48px; right:0; background:rgba(11,17,31,.95); border:1px solid rgba(148,163,184,.2); border-radius:16px; min-width:220px; padding:8px 0; box-shadow:0 12px 30px rgba(0,0,0,.5); z-index:20; display:none; }
     .dropdown-menu.show { display:block; }
@@ -244,9 +255,6 @@
     .empty { text-align:center; color: var(--muted); padding: 60px 16px; border: 1px dashed rgba(148,163,184,.25); border-radius: 18px; margin-top: 24px; }
     .empty strong { color: var(--text); }
 
-    .dropzone { border:2px dashed rgba(148,163,184,.35); border-radius:16px; padding:20px; text-align:center; color: var(--muted); transition: border-color .2s ease, background .2s ease; }
-    .dropzone strong { color: var(--text); }
-    .dropzone.drag { border-color: var(--accent); background: rgba(56,189,248,.06); color: var(--text); }
 
     .footer { text-align:center; color: var(--muted); padding: 24px; }
     .hidden { display:none !important; }
@@ -420,7 +428,7 @@
           <div class="dropdown">
             <button class="action-btn" id="moreActionsBtn" aria-haspopup="true" aria-expanded="false" aria-label="More actions"><span class="ellipsis-icon">···</span></button>
             <div class="dropdown-menu" id="moreMenu">
-              <button data-action="select">✅ Select</button>
+              <button data-action="select"><span class="circle-check">✓</span>Select</button>
               <div class="dropdown-divider"></div>
               <button data-sort="name-asc">↕️ Name (A→Z)</button>
               <button data-sort="name-desc">↕️ Name (Z→A)</button>
@@ -447,9 +455,6 @@
           No media in <strong id="emptyAlbumLabel">Drive</strong> yet.<br>
           Everything stays on this device (IndexedDB). Works offline.
         </p>
-        <div id="dropzone" class="dropzone">
-          Drag & drop media here or use the <strong>＋</strong> menu — files go to <strong id="dropTargetLabel">Drive</strong>.
-        </div>
       </div>
     </div>
 
@@ -685,7 +690,6 @@ const folderListEl = document.getElementById('folderList');
 const albumTitleEl = document.getElementById('activeAlbumTitle');
 const photosHeadingEl = document.getElementById('photosHeading');
 const emptyAlbumLabel = document.getElementById('emptyAlbumLabel');
-const dropTargetLabel = document.getElementById('dropTargetLabel');
 const bottomTabsEl = document.getElementById('bottomTabs');
 const selectionActionsEl = document.getElementById('selectionActions');
 const tabButtons = document.querySelectorAll('.tab-buttons button[data-tab]');
@@ -714,7 +718,6 @@ const actionSave = document.getElementById('actionSave');
 const actionInfo = document.getElementById('actionInfo');
 const muteToggle = document.getElementById('muteToggle');
 const input = document.getElementById('fileInput');
-const dz = document.getElementById('dropzone');
 const clearBtn = document.getElementById('clearBtn');
 const exportBtn = document.getElementById('exportBtn');
 const driveItemsEl = document.getElementById('driveItems');
@@ -763,10 +766,7 @@ const gesture = { active: false, pointerId: null, startX: 0, startY: 0, initialX
 })();
 
 async function ensureFolderSeed() {
-  const existing = await idbAll(db, FOLDER_STORE);
-  if (!existing.length) {
-    await idbAdd(db, FOLDER_STORE, { name: 'My First Folder', created: Date.now(), parentId: null });
-  }
+  // no-op: user decides when to create their first folder
 }
 
 async function loadFolders() {
@@ -1095,17 +1095,7 @@ function updateHeader() {
       if (photosHeadingEl) photosHeadingEl.textContent = 'Photos';
     }
   }
-  updateDropHint();
   updateBackButton();
-}
-
-function updateDropHint() {
-  if (!dropTargetLabel) return;
-  if (activeTab !== TAB_FOLDERS) {
-    dropTargetLabel.textContent = '—';
-    return;
-  }
-  dropTargetLabel.textContent = folderTitleFor(currentFolder);
 }
 
 function collectDescendantFolderIds(rootId) {
@@ -1477,14 +1467,6 @@ input.addEventListener('change', async (e) => {
   input.value = '';
 });
 
-;['dragenter','dragover'].forEach(evt => dz.addEventListener(evt, (e)=>{ e.preventDefault(); dz.classList.add('drag'); }));
-;['dragleave','drop'].forEach(evt => dz.addEventListener(evt, (e)=>{ e.preventDefault(); dz.classList.remove('drag'); }));
-
-dz.addEventListener('drop', async (e) => {
-  const files = e.dataTransfer.files;
-  await addFiles(files);
-});
-
 async function addFiles(fileList) {
   if (!fileList || !fileList.length) return;
   await DB_READY;
@@ -1654,7 +1636,6 @@ function renderGallery() {
   if (!container) return;
   const driveEmpty = document.getElementById('emptyState');
   const albumEmpty = albumMediaEmptyEl;
-  dz?.classList.toggle('hidden', !isDrive);
 
   if (isDrive) {
     container.innerHTML = '';
