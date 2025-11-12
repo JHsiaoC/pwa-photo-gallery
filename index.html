@@ -431,8 +431,6 @@
               <div class="dropdown-divider"></div>
               <button data-view="list">☰ List View</button>
               <button data-view="grid">⬚ Thumbnail View</button>
-              <div class="dropdown-divider"></div>
-              <button data-action="delete-folder">🗑 Delete Folder</button>
             </div>
           </div>
         </div>
@@ -859,6 +857,7 @@ function createFolderCard(folder, count = 0) {
         selectedFolders.add(folder.id);
         card.classList.add('selected');
       }
+      updateSelectionChrome();
       return;
     }
     setActiveFolder(folder.id);
@@ -1121,6 +1120,22 @@ function collectDescendantFolderIds(rootId) {
   return result;
 }
 
+async function deleteFoldersByIds(ids) {
+  const folderSet = new Set();
+  ids.forEach(id => {
+    const chain = collectDescendantFolderIds(id);
+    chain.forEach(value => folderSet.add(value));
+  });
+  if (!folderSet.size) return;
+  const mediaToDelete = photoCache.filter(item => typeof item.folderId === 'number' && folderSet.has(item.folderId));
+  for (const media of mediaToDelete) {
+    await idbDelete(db, STORE, media.id);
+  }
+  for (const id of folderSet) {
+    await idbDelete(db, FOLDER_STORE, id);
+  }
+}
+
 function pickFolderDestination() {
   if (!folders.length) {
     return confirm('No folders available. Move to Drive (root)?') ? null : undefined;
@@ -1185,41 +1200,8 @@ function updateSelectionChrome() {
   if (bottomTabsEl) {
     bottomTabsEl.classList.toggle('action-mode', selectionMode);
   }
-  const hasSelection = selectedMedia.size > 0;
+  const hasSelection = selectedMedia.size > 0 || selectedFolders.size > 0;
   selectionActionButtons.forEach(btn => { btn.disabled = !hasSelection; });
-}
-
-async function handleDeleteFolder() {
-  if (activeTab !== TAB_FOLDERS) {
-    alert('Switch to Drive to delete folders.');
-    return;
-  }
-  if (typeof currentFolder !== 'number') {
-    alert('Drive root cannot be deleted.');
-    return;
-  }
-  const folder = getFolderById(currentFolder);
-  if (!folder) {
-    alert('Folder not found.');
-    return;
-  }
-  const ok = confirm(`Delete "${folder.name}" and everything inside it? This cannot be undone.`);
-  if (!ok) return;
-  const ids = collectDescendantFolderIds(folder.id);
-  const idSet = new Set(ids);
-  const mediaToDelete = photoCache.filter(item => typeof item.folderId === 'number' && idSet.has(item.folderId));
-  for (const media of mediaToDelete) {
-    await idbDelete(db, STORE, media.id);
-  }
-  for (const id of ids) {
-    await idbDelete(db, FOLDER_STORE, id);
-  }
-  selectedFolders.clear();
-  selectedMedia.clear();
-  const parentId = getFolderParentId(folder.id);
-  await loadFolders();
-  await refreshGallery();
-  setActiveFolder(parentId ?? SPECIAL_ALL);
 }
 
 async function handleBulkAction(action) {
@@ -1281,10 +1263,19 @@ async function bulkCopySelected() {
 
 async function bulkDeleteSelected() {
   const items = getSelectedMediaItems();
-  if (!items.length) return alert('Select media first.');
-  if (!confirm(`Delete ${items.length} item(s)? This cannot be undone.`)) return;
-  await Promise.all(items.map(item => idbDelete(db, STORE, item.id)));
+  const folderIds = Array.from(selectedFolders);
+  if (!items.length && !folderIds.length) return alert('Select media or folders first.');
+  const total = items.length + folderIds.length;
+  if (!confirm(`Delete ${total} selected item(s)? This cannot be undone.`)) return;
+  for (const item of items) {
+    await idbDelete(db, STORE, item.id);
+  }
+  if (folderIds.length) {
+    await deleteFoldersByIds(folderIds);
+  }
   selectedMedia.clear();
+  selectedFolders.clear();
+  await loadFolders();
   await refreshGallery();
   toggleSelectionMode(false);
 }
@@ -1296,7 +1287,7 @@ async function bulkAddToAlbumSelected() {
   if (!albumId) {
     albumId = pickAlbumDestination();
   }
-  if (!albumId) return;
+  if (albumId === undefined) return;
   const membership = albumMembership.get(albumId) || new Set();
   for (const item of items) {
     if (membership.has(item.id)) continue;
@@ -1446,11 +1437,6 @@ moreMenu?.addEventListener('click', (e) => {
   }
   if (targetBtn.dataset.action === 'select') {
     toggleSelectionMode();
-    closeMenus();
-    return;
-  }
-  if (targetBtn.dataset.action === 'delete-folder') {
-    handleDeleteFolder().catch(console.error);
     closeMenus();
     return;
   }
@@ -2129,7 +2115,7 @@ function handleAddToAlbum() {
   let selected = currentAlbumId;
   if (!selected) {
     const choice = pickAlbumDestination();
-    if (!choice) return;
+    if (choice === undefined) return;
     selected = choice;
   }
   const membership = albumMembership.get(selected) || new Set();
