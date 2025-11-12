@@ -134,7 +134,7 @@
     .drive-back-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:18px; cursor:pointer; display:grid; place-items:center; }
     .drive-back-btn.hidden { visibility:hidden; }
     .drive-actions { display:flex; gap:12px; justify-content:flex-end; align-items:center; }
-    .action-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:18px; cursor:pointer; display:grid; place-items:center; }
+    .action-btn { width:40px; height:40px; border-radius:20px; border:1px solid rgba(148,163,184,.25); background: rgba(15,23,42,.9); color:var(--text); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; line-height:1; letter-spacing:1px; }
     .dropdown { position:relative; }
     .dropdown-menu { position:absolute; top:48px; right:0; background:rgba(11,17,31,.95); border:1px solid rgba(148,163,184,.2); border-radius:16px; min-width:220px; padding:8px 0; box-shadow:0 12px 30px rgba(0,0,0,.5); z-index:20; display:none; }
     .dropdown-menu.show { display:block; }
@@ -411,12 +411,11 @@
       <div class="drive-header">
         <button id="driveBackBtn" class="drive-back-btn hidden" type="button" aria-label="Back to parent">&lt;</button>
         <div class="drive-heading">
-          <p class="eyebrow">Collection</p>
           <h2 id="activeAlbumTitle">Drive</h2>
         </div>
         <div class="drive-actions">
           <div class="dropdown">
-            <button class="action-btn" id="primaryAddBtn" aria-haspopup="true" aria-expanded="false">＋</button>
+            <button class="action-btn" id="primaryAddBtn" aria-haspopup="true" aria-expanded="false" aria-label="Add menu">+</button>
             <div class="dropdown-menu" id="addMenu">
               <button data-add="import">📥 Import Media</button>
               <button data-add="folder">🗂️ New Folder</button>
@@ -424,7 +423,7 @@
             </div>
           </div>
           <div class="dropdown">
-            <button class="action-btn" id="moreActionsBtn" aria-haspopup="true" aria-expanded="false">⋯</button>
+            <button class="action-btn" id="moreActionsBtn" aria-haspopup="true" aria-expanded="false" aria-label="More actions">• • •</button>
             <div class="dropdown-menu" id="moreMenu">
               <button data-action="select">✅ Select</button>
               <div class="dropdown-divider"></div>
