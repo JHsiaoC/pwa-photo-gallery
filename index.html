@@ -419,7 +419,7 @@
 
     <section id="gallery" class="grid" aria-live="polite"></section>
     <p id="emptyState" class="empty">
-      No media in <strong id="emptyAlbumLabel">All Photos</strong> yet.<br>
+      No media in <strong id="emptyAlbumLabel">All Media</strong> yet.<br>
       Everything stays on this device (IndexedDB). Works offline.
     </p>
   </main>
@@ -1570,8 +1570,7 @@ function handleInfo() {
       : `Size: ${current.width}×${current.height}`,
     `Folder: ${current.folderId ? folderTitleFor(current.folderId) : 'Main Library'}`
   ];
-  alert(lines.join('
-'));
+  alert(lines.join('\n'));
 }
 
 document.addEventListener('keydown', (e) => {
