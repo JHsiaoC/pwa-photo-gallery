@@ -2153,11 +2153,26 @@ function buildFolderPickerOption(folderId, label) {
   };
 }
 
+function normalizeFolderValue(value) {
+  if (value === SPECIAL_ALL || value === SPECIAL_UNSORTED || value == null) return null;
+  if (typeof value === 'number') return value;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 async function pickFolderDestination(opts = {}) {
-  const options = [
-    buildFolderPickerOption(null, 'Drive (root)'),
-    ...folders.map(folder => buildFolderPickerOption(folder.id, folder.name))
-  ];
+  const excludeSet = new Set();
+  (opts.exclude || []).forEach((val) => {
+    excludeSet.add(normalizeFolderValue(val));
+  });
+  const options = [];
+  if (!excludeSet.has(null)) {
+    options.push(buildFolderPickerOption(null, 'Drive (root)'));
+  }
+  folders.forEach(folder => {
+    if (excludeSet.has(folder.id)) return;
+    options.push(buildFolderPickerOption(folder.id, folder.name));
+  });
   const title = opts.title || 'Move to folder';
   return openListPicker({ title, items: options });
 }
@@ -2254,7 +2269,7 @@ async function handleBulkAction(action) {
 async function bulkMoveSelected() {
   const items = getSelectedMediaItems();
   if (!items.length) return alert('Select media first.');
-  const targetFolder = await pickFolderDestination({ title: 'Move to folder' });
+  const targetFolder = await pickFolderDestination({ title: 'Move to folder', exclude: [currentFolder] });
   if (targetFolder === undefined) return;
   await Promise.all(items.map(item => idbPut(db, STORE, { ...item, folderId: targetFolder })));
   selectedMedia.clear();
@@ -2265,7 +2280,7 @@ async function bulkMoveSelected() {
 async function bulkCopySelected() {
   const items = getSelectedMediaItems();
   if (!items.length) return alert('Select media first.');
-  const targetFolder = await pickFolderDestination({ title: 'Copy to folder' });
+  const targetFolder = await pickFolderDestination({ title: 'Copy to folder', exclude: [currentFolder] });
   if (targetFolder === undefined) return;
   const nameSet = buildNameSetForFolder(targetFolder);
   for (const item of items) {
@@ -3735,7 +3750,7 @@ function resetGesture() {
 async function handleMoveToFolder() {
   const current = getCurrentItem();
   if (!current) return alert('Open a photo or video first.');
-  const targetFolder = await pickFolderDestination({ title: 'Move to folder' });
+  const targetFolder = await pickFolderDestination({ title: 'Move to folder', exclude: [currentFolder] });
   if (targetFolder === undefined) return;
   if ((current.folderId ?? null) === targetFolder) {
     alert('Already in that folder.');
