@@ -2842,7 +2842,11 @@ async function addFiles(fileList) {
     const created = Date.now();
     const captured = file.lastModified ? Number(file.lastModified) : created;
     const meta = await getMediaMeta(blob, blob.type || file.type || 'image/jpeg');
-    const safeName = generateFileName(file);
+    const safeName = generateFileName({
+      name: file.name,
+      type: file.type,
+      lastModified: created
+    });
     const previewData = await generatePreviewBlob(blob, meta.kind, blob.type || file.type);
     await idbAdd(db, STORE, {
       blob,
@@ -3204,7 +3208,7 @@ function generateFileName(file, preview = false, templateOverride) {
     original_name: originalBase || 'media',
     date: dateStr,
     time: timeStr,
-    timestamp: String(date.getTime()),
+    timestamp: timestampHuman,
     timestamp_human: timestampHuman,
     counter: needsCounter ? String(settings.counter || 1).padStart(3, '0') : ''
   };
