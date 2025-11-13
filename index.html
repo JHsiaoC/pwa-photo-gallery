@@ -187,7 +187,7 @@
       position:relative;
       background:rgba(15,23,42,.8);
       border:1px solid rgba(148,163,184,.2);
-      padding:14px;
+      padding:12px 14px 6px;
       border-radius:24px;
       min-height:0;
       aspect-ratio:1;
@@ -197,6 +197,7 @@
       gap:4px;
       cursor:pointer;
       overflow:hidden;
+      align-items:center;
     }
     .folder-icon-wrap {
       width:100%;
@@ -208,10 +209,17 @@
       justify-content:center;
       margin-bottom:4px;
     }
+    .folder-footer {
+      margin-top:auto;
+      width:100%;
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+    }
     .folder-icon-wrap img { width:80px; height:80px; object-fit:contain; filter:none; }
     .folder-card.active { border-color: var(--accent); }
-    .folder-card .name { font-weight:600; font-size:16px; }
-    .folder-card .count { font-size:12px; color:var(--muted); }
+    .folder-card .name { font-weight:600; font-size:16px; width:100%; text-align:left; }
+    .folder-card .count { font-size:12px; color:var(--muted); width:100%; text-align:left; }
     .drive-contents { margin-top:24px; }
     .folder-list-view { display:flex; flex-direction:column; gap:10px; }
     .folder-list-view .folder-card {
@@ -372,6 +380,18 @@
       object-fit:contain;
       opacity:.75;
       filter:var(--icon-filter);
+    }
+    .album-card-thumb .thumb-placeholder.full {
+      width:100%;
+      height:100%;
+      padding:0;
+      border-radius:inherit;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:none;
+      position:absolute;
+      inset:0;
     }
     .album-thumb-text {
       width:100%;
@@ -1734,13 +1754,16 @@ function createFolderCard(folder, count = 0) {
   iconImg.loading = 'lazy';
   iconWrap.appendChild(iconImg);
   card.appendChild(iconWrap);
+  const footer = document.createElement('div');
+  footer.className = 'folder-footer';
   const name = document.createElement('div');
   name.className = 'name';
   name.textContent = folder.name;
   const meta = document.createElement('div');
   meta.className = 'count';
   meta.textContent = count ? `${count} item${count === 1 ? '' : 's'}` : 'Empty';
-  card.append(name, meta);
+  footer.append(name, meta);
+  card.append(iconWrap, footer);
   card.addEventListener('click', () => {
     if (selectionMode) {
       if (selectedFolders.has(folder.id)) {
@@ -1868,10 +1891,13 @@ function renderAlbumGrid() {
   newCard.className = 'album-card new';
   const newThumb = document.createElement('div');
   newThumb.className = 'album-card-thumb';
-  const plus = document.createElement('div');
+  const placeholder = document.createElement('span');
+  placeholder.className = 'thumb-placeholder full';
+  const plus = document.createElement('span');
   plus.className = 'album-new-icon';
   plus.textContent = '＋';
-  newThumb.appendChild(plus);
+  placeholder.appendChild(plus);
+  newThumb.appendChild(placeholder);
   const newBody = document.createElement('div');
   newBody.className = 'album-card-body';
   const newTitle = document.createElement('div');
