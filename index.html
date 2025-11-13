@@ -401,20 +401,20 @@
     .album-grid.list-view .album-card-body { align-items:flex-start; }
     .album-grid.list-view .album-card .count { text-align:left; }
     .album-grid:not(.list-view) .album-card {
-      border-radius:0;
-      padding:0;
-      gap:0;
-      box-shadow:none;
-      border:1px solid rgba(51,65,85,.6);
+      border-radius:24px;
+      padding:18px;
+      gap:12px;
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+      border:1px solid rgba(148,163,184,.2);
     }
     .album-grid:not(.list-view) .album-card-thumb {
-      border-radius:0;
+      border-radius:18px;
       max-height:none;
-      flex:1 1 auto;
+      flex:auto;
     }
     .album-grid:not(.list-view) .album-card-body,
     .album-grid:not(.list-view) .album-card .count {
-      display:none;
+      display:flex;
     }
     .album-empty { text-align:center; padding:24px; color:var(--muted); }
     .theme-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:16px; }
@@ -1704,15 +1704,17 @@ function createMediaTile(item, idx) {
   name.className = 'name';
   name.textContent = item.name || 'Untitled';
   card.appendChild(name);
-  const meta = document.createElement('div');
-  meta.className = 'meta';
-  const stamp = document.createElement('span');
-  stamp.textContent = new Date(item.created).toLocaleDateString();
-  const chip = document.createElement('span');
-  chip.className = 'chip';
-  chip.textContent = isVideo ? formatDuration(item.duration) : (isText ? 'Text file' : `${item.width}×${item.height}`);
-  meta.append(stamp, chip);
-  card.appendChild(meta);
+    if (driveViewMode === 'list') {
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const stamp = document.createElement('span');
+      stamp.textContent = new Date(item.created).toLocaleDateString();
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = isVideo ? formatDuration(item.duration) : (isText ? 'Text file' : `${item.width}×${item.height}`);
+      meta.append(stamp, chip);
+      card.appendChild(meta);
+    }
   card.addEventListener('click', () => {
     if (selectionMode) {
       if (selectedMedia.has(item.id)) {
@@ -3261,15 +3263,17 @@ function renderGallery() {
       card.appendChild(flag);
     }
     card.appendChild(mediaEl);
-    const meta = document.createElement('div');
-    meta.className = 'meta';
-    const label = document.createElement('span');
-    label.textContent = new Date(item.created).toLocaleString();
-    const chip = document.createElement('span');
-    chip.className = 'chip';
-    chip.textContent = isVideo ? formatDuration(item.duration) : (isText ? 'Text file' : `${item.width}×${item.height}`);
-    meta.append(label, chip);
-    card.appendChild(meta);
+    if (albumMediaPanel?.classList.contains('list-view-mode')) {
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      const label = document.createElement('span');
+      label.textContent = new Date(item.created).toLocaleString();
+      const chip = document.createElement('span');
+      chip.className = 'chip';
+      chip.textContent = isVideo ? formatDuration(item.duration) : (isText ? 'Text file' : `${item.width}×${item.height}`);
+      meta.append(label, chip);
+      card.appendChild(meta);
+    }
     card.addEventListener('click', () => {
       if (selectionMode && activeTab === TAB_ALBUMS && currentAlbumId) {
         if (selectedMedia.has(item.id)) {
