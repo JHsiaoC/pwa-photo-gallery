@@ -288,6 +288,15 @@
       opacity:1;
     }
     .album-media-panel { margin-top:20px; position:relative; }
+    .album-media-panel .grid { gap:2px; }
+    .album-media-panel .album-media-card {
+      border-radius:0;
+      box-shadow:none;
+      border:none;
+    }
+    .album-media-panel .album-media-card .meta {
+      display:none;
+    }
     .album-shell,
     .theme-shell { background: transparent; border-radius: 0; border:none; box-shadow:none; padding: 24px 0 40px; min-height: 60vh; }
     .photos-header { text-align:center; margin-bottom:16px; }
@@ -300,6 +309,7 @@
       .album-grid { grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); }
     }
     .album-grid.list-view { display:flex; flex-direction:column; gap:12px; }
+    .album-grid:not(.list-view) { gap:0; }
     .album-card {
       aspect-ratio: 1;
       border-radius: 24px;
@@ -390,6 +400,22 @@
     }
     .album-grid.list-view .album-card-body { align-items:flex-start; }
     .album-grid.list-view .album-card .count { text-align:left; }
+    .album-grid:not(.list-view) .album-card {
+      border-radius:0;
+      padding:0;
+      gap:0;
+      box-shadow:none;
+      border:1px solid rgba(51,65,85,.6);
+    }
+    .album-grid:not(.list-view) .album-card-thumb {
+      border-radius:0;
+      max-height:none;
+      flex:1 1 auto;
+    }
+    .album-grid:not(.list-view) .album-card-body,
+    .album-grid:not(.list-view) .album-card .count {
+      display:none;
+    }
     .album-empty { text-align:center; padding:24px; color:var(--muted); }
     .theme-grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap:16px; }
     .theme-card { border-radius:20px; border:1px solid rgba(148,163,184,.2); padding:18px; background:rgba(15,23,42,.85); display:flex; flex-direction:column; gap:12px; cursor:pointer; transition:border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
@@ -1171,6 +1197,10 @@ const defaultSettings = {
 };
 let settings = loadSettings();
 ensureViewPrefsShape(settings);
+if (!settings.namingScheme || settings.namingScheme === '{{original}}') {
+  settings.namingScheme = defaultSettings.namingScheme;
+  saveSettings();
+}
 let driveViewMode = getFolderViewMode(currentFolder);
 let albumViewMode = settings.viewPrefs?.albumGrid || 'grid';
 let chromeHidden = false;
@@ -1459,7 +1489,7 @@ let infoModalResolver = null;
 
 function openInfoModal(item) {
   if (!infoModal || !infoNameInput) return Promise.resolve(null);
-  infoNameInput.value = item.name || '';
+  infoNameInput.value = item.name || formatTimestampName(item.captured ?? item.created);
   if (infoOriginalEl) infoOriginalEl.textContent = item.originalName || item.name || '—';
   renderInfoMetadata(item);
   infoModal.classList.remove('hidden');
@@ -1480,7 +1510,7 @@ function closeInfoModal(result) {
 function renderInfoMetadata(item) {
   if (!infoMetaList) return;
   const folderLabel = folderTitleFor(
-    item.folderId == null ? SPECIAL_UNSORTED : item.folderId
+    item.folderId == null ? SPECIAL_ALL : item.folderId
   );
   const rows = [
     ['Type', item.type || item.kind || '—'],
@@ -1647,13 +1677,14 @@ function createMediaTile(item, idx) {
     textPreview.textContent = item.preview || item.name || 'Text file';
     thumb.appendChild(textPreview);
   } else {
-    const thumbUrl = getThumbnailUrl(item);
-    if (thumbUrl) {
+    const asset = getThumbnailAsset(item);
+    if (asset) {
       const img = document.createElement('img');
       img.loading = 'lazy';
       img.decoding = 'async';
       img.alt = item.name || 'Media file';
-      img.src = thumbUrl;
+      img.src = asset.url;
+      img.dataset.thumbKey = asset.key;
       thumb.appendChild(img);
     } else {
       const placeholder = document.createElement('div');
@@ -1767,13 +1798,14 @@ function renderAlbumGrid() {
         textBlock.textContent = preview.preview || preview.name || 'Text file';
         thumb.appendChild(textBlock);
       } else {
-        const thumbUrl = getThumbnailUrl(preview);
-        if (thumbUrl) {
+        const asset = getThumbnailAsset(preview);
+        if (asset) {
           const media = document.createElement('img');
           media.loading = 'lazy';
           media.decoding = 'async';
           media.alt = album.name;
-          media.src = thumbUrl;
+          media.src = asset.url;
+          media.dataset.thumbKey = asset.key;
           thumb.appendChild(media);
         }
       }
@@ -2152,14 +2184,6 @@ function getSelectedMediaItems() {
     if (found) list.push(found);
   });
   return list;
-}
-
-function buildCopyName(name = 'media') {
-  const dot = name.lastIndexOf('.');
-  const base = dot > -1 ? name.slice(0, dot) : name;
-  const ext = dot > -1 ? name.slice(dot) : '';
-  const suffix = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-  return `${base || 'media'}-copy-${suffix}${ext}`;
 }
 
 function updateSelectionChrome() {
@@ -2776,18 +2800,21 @@ function mediaCacheKey(item, variant) {
   return `${item.id}:${variant}`;
 }
 
-function getThumbnailUrl(item) {
+function getThumbnailAsset(item) {
+  if (!item || item.id == null) return null;
   const key = mediaCacheKey(item, 'thumb');
   if (!key) return null;
   if (!item.previewBlob && item.kind !== 'text') {
     schedulePreviewGeneration(item);
   }
-  if (mediaUrlCache.has(key)) return mediaUrlCache.get(key);
+  if (mediaUrlCache.has(key)) {
+    return { key, url: mediaUrlCache.get(key) };
+  }
   const blobSource = item.previewBlob || (item.kind === 'text' ? null : item.blob);
   if (!blobSource) return null;
   const url = URL.createObjectURL(blobSource);
   mediaUrlCache.set(key, url);
-  return url;
+  return { key, url };
 }
 
 function schedulePreviewGeneration(item) {
@@ -2805,9 +2832,12 @@ function schedulePreviewGeneration(item) {
         await idbPut(db, STORE, item);
         const key = mediaCacheKey(item, 'thumb');
         if (key && mediaUrlCache.has(key)) {
-          URL.revokeObjectURL(mediaUrlCache.get(key));
+          const oldUrl = mediaUrlCache.get(key);
           mediaUrlCache.delete(key);
+          if (oldUrl) URL.revokeObjectURL(oldUrl);
         }
+        const asset = getThumbnailAsset(item);
+        if (asset) updateThumbnailElements(asset.key, asset.url);
       }
     } catch (err) {
       console.warn('Deferred preview generation failed', err);
@@ -2815,6 +2845,15 @@ function schedulePreviewGeneration(item) {
       pendingPreviewIds.delete(item.id);
     }
   })();
+}
+
+function updateThumbnailElements(key, url) {
+  if (!key || !url) return;
+  document.querySelectorAll(`img[data-thumb-key=\"${key}\"]`).forEach((img) => {
+    if (img.src !== url) {
+      img.src = url;
+    }
+  });
 }
 
 function buildPickerPreviewPayload(item) {
@@ -3023,11 +3062,12 @@ function buildNameSetForFolder(folderId) {
 
 function nextCopyName(name, folderId, nameSet) {
   const { base, ext } = splitNameParts(name);
+  const safeBase = cleanFileName(base || 'media', 'media');
   const normalizedSet = nameSet || buildNameSetForFolder(folderId);
   let index = 1;
   let candidate;
   do {
-    candidate = `${base}_${index}${ext}`;
+    candidate = `${safeBase}_${index}${ext}`;
     index += 1;
   } while (normalizedSet.has(candidate.toLowerCase()));
   normalizedSet.add(candidate.toLowerCase());
@@ -3196,13 +3236,14 @@ function renderGallery() {
       mediaEl.className = 'text-card';
       mediaEl.textContent = item.preview || item.name || 'Text file';
     } else {
-      const thumbUrl = getThumbnailUrl(item);
-      if (thumbUrl) {
+      const asset = getThumbnailAsset(item);
+      if (asset) {
         mediaEl = document.createElement('img');
         mediaEl.loading = 'lazy';
         mediaEl.decoding = 'async';
         mediaEl.alt = item.name;
-        mediaEl.src = thumbUrl;
+        mediaEl.src = asset.url;
+        mediaEl.dataset.thumbKey = asset.key;
       } else {
         mediaEl = document.createElement('div');
         mediaEl.className = 'text-card';
