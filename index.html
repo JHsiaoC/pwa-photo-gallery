@@ -649,6 +649,10 @@
       border:1px solid rgba(148,163,184,.2);
       font-size:13px;
     }
+    .info-card .info-original { font-size:13px; color:var(--muted); margin:8px 0 14px; }
+    .info-grid { display:grid; grid-template-columns:120px 1fr; gap:6px 16px; margin-top:8px; font-size:13px; color:var(--muted); }
+    .info-grid dt { font-weight:600; color:var(--text); }
+    .info-grid dd { margin:0; }
   </style>
 </head>
 <body>
@@ -837,6 +841,23 @@
     <div class="modal-actions">
       <button type="button" id="listPickerCancel">Cancel</button>
     </div>
+  </div>
+</div>
+
+<!-- MARK:info-modal -->
+<div id="infoModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="infoModalTitle">
+  <div class="modal-card info-card">
+    <h3 id="infoModalTitle">File info</h3>
+    <form id="infoForm">
+      <label for="infoName">Display name</label>
+      <input id="infoName" type="text" maxlength="200" autocomplete="off" required>
+      <p class="info-original">Original name: <span id="infoOriginal">—</span></p>
+      <dl class="info-grid" id="infoMetaList"></dl>
+      <div class="modal-actions">
+        <button type="button" id="infoCancel">Cancel</button>
+        <button type="submit" id="infoSave">Save</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -1071,6 +1092,12 @@ let listPickerModalResolver = null;
 const listPickerPreviewUrls = [];
 const mediaUrlCache = new Map();
 const pendingPreviewIds = new Set();
+const infoModal = document.getElementById('infoModal');
+const infoForm = document.getElementById('infoForm');
+const infoNameInput = document.getElementById('infoName');
+const infoOriginalEl = document.getElementById('infoOriginal');
+const infoMetaList = document.getElementById('infoMetaList');
+const infoCancelBtn = document.getElementById('infoCancel');
 const modal = document.getElementById('albumModal');
 const albumModalTitle = document.getElementById('albumModalTitle');
 const albumForm = document.getElementById('albumForm');
@@ -1134,7 +1161,7 @@ let inputModalResolver = null;
 let textFileModalResolver = null;
 const SETTINGS_KEY = 'pwa-photo-gallery-settings';
 const defaultSettings = {
-  namingScheme: '{{original}}',
+  namingScheme: '{{timestamp_human}}',
   counter: 1,
   theme: 'dark',
   viewPrefs: {
@@ -1426,6 +1453,66 @@ listPickerModal?.addEventListener('click', (e) => {
 });
 listPickerModal?.addEventListener('mousedown', (e) => {
   if (e.target === listPickerModal) closeListPicker(undefined);
+});
+
+let infoModalResolver = null;
+
+function openInfoModal(item) {
+  if (!infoModal || !infoNameInput) return Promise.resolve(null);
+  infoNameInput.value = item.name || '';
+  if (infoOriginalEl) infoOriginalEl.textContent = item.originalName || item.name || '—';
+  renderInfoMetadata(item);
+  infoModal.classList.remove('hidden');
+  setTimeout(() => infoNameInput.focus(), 20);
+  return new Promise((resolve) => {
+    infoModalResolver = resolve;
+  });
+}
+
+function closeInfoModal(result) {
+  if (infoModal) infoModal.classList.add('hidden');
+  if (infoModalResolver) {
+    infoModalResolver(result ?? null);
+    infoModalResolver = null;
+  }
+}
+
+function renderInfoMetadata(item) {
+  if (!infoMetaList) return;
+  const folderLabel = folderTitleFor(
+    item.folderId == null ? SPECIAL_UNSORTED : item.folderId
+  );
+  const rows = [
+    ['Type', item.type || item.kind || '—'],
+    ['Size', formatFileSize(item.size)],
+    ['Dimensions', item.width && item.height ? `${item.width}×${item.height}` : '—'],
+    ['Duration', item.kind === 'video' ? formatDuration(item.duration) : '—'],
+    ['Created', new Date(item.created).toLocaleString()],
+    ['Captured', new Date(item.captured ?? item.created).toLocaleString()],
+    ['Folder', folderLabel]
+  ];
+  infoMetaList.innerHTML = '';
+  rows.forEach(([label, value]) => {
+    const dt = document.createElement('dt');
+    dt.textContent = label;
+    const dd = document.createElement('dd');
+    dd.textContent = value || '—';
+    infoMetaList.append(dt, dd);
+  });
+}
+
+infoCancelBtn?.addEventListener('click', () => closeInfoModal(null));
+infoModal?.addEventListener('click', (e) => {
+  if (e.target === infoModal) closeInfoModal(null);
+});
+infoForm?.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = (infoNameInput?.value || '').trim();
+  if (!name) {
+    infoNameInput?.focus();
+    return;
+  }
+  closeInfoModal({ name });
 });
 
 (async () => {
@@ -1924,12 +2011,14 @@ async function copyAlbumsToFolderSelected() {
   if (targetFolder === undefined) return;
   const photoIds = gatherAlbumPhotoIds();
   if (!photoIds.size) return alert('Selected albums do not contain media.');
+  const nameSet = buildNameSetForFolder(targetFolder);
   for (const photoId of photoIds) {
     const photo = photoCache.find(item => item.id === photoId);
     if (!photo) continue;
+    const newName = nextCopyName(photo.name, targetFolder, nameSet);
     const entry = {
       blob: photo.blob,
-      name: buildCopyName(photo.name),
+      name: newName,
       type: photo.type,
       created: Date.now(),
       captured: photo.captured,
@@ -1940,6 +2029,7 @@ async function copyAlbumsToFolderSelected() {
       size: photo.size,
       preview: photo.preview,
       folderId: targetFolder,
+      originalName: photo.originalName || photo.name,
       previewBlob: photo.previewBlob || null,
       previewWidth: photo.previewWidth || 0,
       previewHeight: photo.previewHeight || 0
@@ -2135,10 +2225,12 @@ async function bulkCopySelected() {
   if (!items.length) return alert('Select media first.');
   const targetFolder = await pickFolderDestination({ title: 'Copy to folder' });
   if (targetFolder === undefined) return;
+  const nameSet = buildNameSetForFolder(targetFolder);
   for (const item of items) {
+    const newName = nextCopyName(item.name, targetFolder, nameSet);
     const clone = {
       blob: item.blob,
-      name: buildCopyName(item.name),
+      name: newName,
       type: item.type,
       created: Date.now(),
       captured: item.captured,
@@ -2149,6 +2241,7 @@ async function bulkCopySelected() {
       size: item.size,
       preview: item.preview,
       folderId: targetFolder,
+      originalName: item.originalName || item.name,
       previewBlob: item.previewBlob || null,
       previewWidth: item.previewWidth || 0,
       previewHeight: item.previewHeight || 0
@@ -2568,6 +2661,7 @@ async function addFiles(fileList) {
       kind: meta.kind || 'image',
       size: blob.size || arrayBuf.byteLength || 0,
       folderId: targetFolder,
+      originalName: file.name || safeName,
       previewBlob: previewData?.blob || null,
       previewWidth: previewData?.width || 0,
       previewHeight: previewData?.height || 0
@@ -2602,6 +2696,7 @@ async function addInlineMedia({ name, blob, type }) {
     size: blob.size || 0,
     preview: textPreview,
     folderId: typeof currentFolder === 'number' ? currentFolder : null,
+    originalName: name,
     previewBlob: previewData?.blob || null,
     previewWidth: previewData?.width || 0,
     previewHeight: previewData?.height || 0
@@ -2861,37 +2956,107 @@ function dataUrlToBlob(dataUrl) {
 
 
 function sanitizeSegment(value) {
-  return value.toLowerCase().replace(/[^\w-]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+  return (value || '').toLowerCase().replace(/[^\w-]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+function cleanFileName(value, fallback = 'media') {
+  const cleaned = (value || '').replace(/[<>:"/\\|?*]+/g, '-').replace(/\s+/g, ' ').trim();
+  return cleaned || fallback || 'media';
+}
+
+function formatTimestampName(input = Date.now()) {
+  const date = input instanceof Date ? input : new Date(input || Date.now());
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}.${pad(date.getMinutes())}.${pad(date.getSeconds())}`;
+}
+
+function splitNameParts(name = '') {
+  const dot = name.lastIndexOf('.');
+  if (dot > 0) {
+    return { base: name.slice(0, dot), ext: name.slice(dot) };
+  }
+  return { base: name, ext: '' };
 }
 
 function generateFileName(file, preview = false, templateOverride) {
-  const originalName = file.name || '';
-  const extMatch = originalName.match(/(\.[\w]+)$/);
-  let ext = extMatch ? extMatch[1] : '';
+  const originalFull = file.name || '';
+  let { base: originalBase, ext } = splitNameParts(originalFull);
   if (!ext) ext = mimeToExtension(file.type || '');
-  const base = originalName.replace(/(\.[\w]+)$/, '') || (file.type?.startsWith('video/') ? 'video' : 'photo');
+  if (!originalBase) originalBase = file.type?.startsWith('video/') ? 'video' : 'photo';
   const template = (templateOverride && templateOverride.trim()) || (settings.namingScheme && settings.namingScheme.trim()) || defaultSettings.namingScheme;
   const date = new Date(file.lastModified || Date.now());
   const dateStr = date.toISOString().slice(0, 10);
   const timeStr = date.toTimeString().slice(0, 8).replace(/:/g, '-');
+  const timestampHuman = formatTimestampName(date);
   const needsCounter = template.includes('{{counter}}');
   const replacements = {
-    original: sanitizeSegment(base) || 'media',
+    original: sanitizeSegment(originalBase) || 'media',
+    original_name: originalBase || 'media',
     date: dateStr,
     time: timeStr,
     timestamp: String(date.getTime()),
+    timestamp_human: timestampHuman,
     counter: needsCounter ? String(settings.counter || 1).padStart(3, '0') : ''
   };
   let result = template;
   for (const [token, value] of Object.entries(replacements)) {
-    result = result.split(`{{${token}}}`).join(value);
+    result = result.split(`{{${token}}}`).join(value ?? '');
   }
-  result = sanitizeSegment(result) || sanitizeSegment(base) || 'media';
+  result = cleanFileName(result, originalBase || 'media');
   if (needsCounter && !preview) {
     settings.counter = (settings.counter || 1) + 1;
     saveSettings();
   }
   return ext ? `${result}${ext}` : result;
+}
+
+function buildNameSetForFolder(folderId) {
+  const target = folderId ?? null;
+  const nameSet = new Set();
+  photoCache.forEach(item => {
+    if ((item.folderId ?? null) === target) {
+      nameSet.add((item.name || '').toLowerCase());
+    }
+  });
+  return nameSet;
+}
+
+function nextCopyName(name, folderId, nameSet) {
+  const { base, ext } = splitNameParts(name);
+  const normalizedSet = nameSet || buildNameSetForFolder(folderId);
+  let index = 1;
+  let candidate;
+  do {
+    candidate = `${base}_${index}${ext}`;
+    index += 1;
+  } while (normalizedSet.has(candidate.toLowerCase()));
+  normalizedSet.add(candidate.toLowerCase());
+  return candidate;
+}
+
+function formatDuration(seconds = 0) {
+  const total = Math.max(0, Math.round(seconds || 0));
+  const hrs = Math.floor(total / 3600);
+  const mins = Math.floor((total % 3600) / 60);
+  const secs = total % 60;
+  const parts = [
+    hrs > 0 ? String(hrs) : null,
+    hrs > 0 ? String(mins).padStart(2, '0') : String(mins),
+    String(secs).padStart(2, '0')
+  ].filter(Boolean);
+  return parts.join(':');
+}
+
+function formatFileSize(bytes = 0) {
+  if (!bytes || bytes < 0) return '—';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  return `${value.toFixed(unit === 0 ? 0 : 1)} ${units[unit]}`;
 }
 
 async function refreshGallery() {
@@ -3538,20 +3703,22 @@ function handleSaveMedia() {
   URL.revokeObjectURL(url);
 }
 
-function handleInfo() {
+async function handleInfo() {
   const current = getCurrentItem();
   if (!current) return alert('Open a photo or video first.');
-  const lines = [
-    `Name: ${current.name}`,
-    `Type: ${current.type}`,
-    `Captured: ${new Date(current.captured ?? current.created).toLocaleString()}`,
-    `Uploaded: ${new Date(current.created).toLocaleString()}`,
-    current.kind === 'video'
-      ? `Duration: ${formatDuration(current.duration)}`
-      : `Size: ${current.width}×${current.height}`,
-    `Folder: ${current.folderId ? folderTitleFor(current.folderId) : 'Main Library'}`
-  ];
-  alert(lines.join('\n'));
+  const result = await openInfoModal(current);
+  if (!result || !result.name) return;
+  const newName = result.name.trim();
+  const safeName = cleanFileName(newName, current.name || 'media');
+  if (!safeName || safeName === current.name) return;
+  current.name = safeName;
+  if (viewerTitle) viewerTitle.textContent = safeName;
+  await idbPut(db, STORE, { ...current, name: safeName });
+  const cacheIndex = photoCache.findIndex(item => item.id === current.id);
+  if (cacheIndex > -1) {
+    photoCache[cacheIndex] = { ...photoCache[cacheIndex], name: safeName };
+  }
+  renderGallery();
 }
 
 document.addEventListener('keydown', (e) => {
@@ -3562,6 +3729,7 @@ document.addEventListener('keydown', (e) => {
     if (!inputModal.classList.contains('hidden')) closeInputModal(null);
     if (!textFileModal.classList.contains('hidden')) closeTextFileModal(null);
     if (listPickerModal && !listPickerModal.classList.contains('hidden')) closeListPicker(undefined);
+    if (infoModal && !infoModal.classList.contains('hidden')) closeInfoModal(null);
   }
   if (!photoViewer.classList.contains('hidden')) {
     if (e.key === 'ArrowRight') { e.preventDefault(); navigateViewer(1); }
