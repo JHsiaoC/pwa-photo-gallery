@@ -12,6 +12,7 @@ The custom icons bundled with this project originate from [Flaticon](https://www
 - Icons made by [HideMaru](https://www.flaticon.com/authors/hidemaru) from [www.flaticon.com](https://www.flaticon.com/)
 - Icons made by [Icon mania](https://www.flaticon.com/authors/icon-mania) from [www.flaticon.com](https://www.flaticon.com/)
 - Icons made by [Kiranshastry](https://www.flaticon.com/authors/kiranshastry) from [www.flaticon.com](https://www.flaticon.com/)
+- Icons made by [Kirill Kazachek](https://www.flaticon.com/authors/kirill-kazachek) from [www.flaticon.com](https://www.flaticon.com/)
 - Icons made by [NickyLimYeanFen](https://www.flaticon.com/authors/nickylimyeanfen) from [www.flaticon.com](https://www.flaticon.com/)
 - Icons made by [Pixel perfect](https://www.flaticon.com/authors/pixel-perfect) from [www.flaticon.com](https://www.flaticon.com/)
 - Icons made by [QudaDesign](https://www.flaticon.com/authors/qudadesign) from [www.flaticon.com](https://www.flaticon.com/)
