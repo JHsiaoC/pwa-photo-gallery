@@ -312,7 +312,7 @@
       display:none;
     }
 -    .album-shell,
-    .theme-shell { background: transparent; border-radius: 0; border:none; box-shadow:none; padding: 24px 0 40px; min-height: 60vh; }
+    .settings-shell { background: transparent; border-radius: 0; border:none; box-shadow:none; padding: 24px 0 40px; min-height: 60vh; }
     .photos-header { text-align:center; margin-bottom:16px; }
     #photosHeading { margin:0; font-size:28px; }
     .album-toolbar { display:flex; align-items:center; gap:12px; margin-bottom:16px; }
@@ -683,8 +683,38 @@
       cursor: none;
     }
 
-    .settings-modal .modal-card {
-      width: min(420px, 95vw);
+    .settings-tabs {
+      display:flex;
+      justify-content:center;
+      gap:12px;
+      margin:16px 0 24px;
+    }
+    .settings-tabs button {
+      background:rgba(15,23,42,.85);
+      border:1px solid rgba(148,163,184,.3);
+      color:var(--text);
+      padding:8px 16px;
+      border-radius:999px;
+      font-weight:600;
+      cursor:pointer;
+      transition:border-color .2s ease, color .2s ease, background .2s ease;
+    }
+    .settings-tabs button.active {
+      border-color:var(--accent);
+      background:rgba(56,189,248,.15);
+      color:var(--text);
+    }
+    .settings-panel { max-width:680px; margin:0 auto 32px; }
+    .settings-panel.hidden { display:none !important; }
+    .settings-panel form {
+      width:100%;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      background:rgba(15,23,42,.85);
+      border:1px solid rgba(148,163,184,.2);
+      border-radius:18px;
+      padding:20px;
     }
     .settings-help {
       font-size:12px;
@@ -699,6 +729,19 @@
       border:1px solid rgba(148,163,184,.2);
       font-size:13px;
     }
+    .token-list { display:flex; flex-wrap:wrap; gap:8px; }
+    .token-list button {
+      border:1px solid rgba(148,163,184,.3);
+      background:transparent;
+      color:var(--text);
+      padding:4px 10px;
+      border-radius:999px;
+      font-size:12px;
+      cursor:pointer;
+    }
+    .token-list button:hover { border-color:var(--accent); }
+    .settings-actions { display:flex; justify-content:flex-end; gap:8px; }
+    .settings-actions button { border-radius:999px; padding:8px 16px; border:1px solid rgba(148,163,184,.3); background:rgba(56,189,248,.15); color:var(--text); font-weight:600; }
     .info-card .info-original { font-size:13px; color:var(--muted); margin:8px 0 14px; }
     .info-grid { display:grid; grid-template-columns:120px 1fr; gap:6px 16px; margin-top:8px; font-size:13px; color:var(--muted); }
     .info-grid dt { font-weight:600; color:var(--text); }
@@ -805,14 +848,42 @@
       </div>
     </div>
 
-    <!-- MARK:theme-shell -->
-    <div class="theme-shell hidden">
+    <!-- MARK:settings-shell -->
+    <div class="settings-shell hidden">
       <div class="photos-header">
-        <p class="eyebrow">Appearance</p>
-        <h2>Themes</h2>
+        <p class="eyebrow">Control Center</p>
+        <h2>Settings</h2>
       </div>
-      <p style="text-align:center; color:var(--muted); margin-bottom:24px;">Pick a background style for the Drive and Photos tabs.</p>
-      <div id="themeGrid" class="theme-grid"></div>
+      <div class="settings-tabs">
+        <button type="button" class="active" data-settings-tab="themes">Themes</button>
+        <button type="button" data-settings-tab="uploads">Uploads</button>
+      </div>
+      <div class="settings-panel" data-settings-panel="themes">
+        <p class="settings-help" style="text-align:center; margin-bottom:24px;">Pick a background style for the Drive and Photos tabs.</p>
+        <div id="themeGrid" class="theme-grid"></div>
+      </div>
+      <div class="settings-panel hidden" data-settings-panel="uploads">
+        <form id="uploadSettingsForm">
+          <label for="namingScheme">File naming template</label>
+          <input id="namingScheme" name="namingScheme" type="text" placeholder="{{timestamp_human}}" maxlength="150">
+          <p class="settings-help">Use tokens to build names. Available: <code>{{original}}</code>, <code>{{original_name}}</code>, <code>{{date}}</code>, <code>{{time}}</code>, <code>{{timestamp}}</code>, <code>{{timestamp_human}}</code>, <code>{{counter}}</code>.</p>
+          <div class="token-list">
+            <button type="button" data-token="{{original}}">{{original}}</button>
+            <button type="button" data-token="{{original_name}}">{{original_name}}</button>
+            <button type="button" data-token="{{date}}">{{date}}</button>
+            <button type="button" data-token="{{time}}">{{time}}</button>
+            <button type="button" data-token="{{timestamp}}">{{timestamp}}</button>
+            <button type="button" data-token="{{timestamp_human}}">{{timestamp_human}}</button>
+            <button type="button" data-token="{{counter}}">{{counter}}</button>
+          </div>
+          <div class="settings-preview">
+            Preview: <strong id="namingPreview">photo-2024-01-01</strong>
+          </div>
+          <div class="settings-actions">
+            <button type="submit">Save format</button>
+          </div>
+        </form>
+      </div>
     </div>
   </main>
 </div>
@@ -830,25 +901,6 @@
       <div class="modal-actions">
         <button type="button" id="albumCancel">Cancel</button>
         <button type="submit">Create</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- MARK:settings-modal -->
-<div id="settingsModal" class="modal hidden settings-modal" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
-  <div class="modal-card">
-    <h3 id="settingsTitle">Settings</h3>
-    <form id="settingsForm">
-      <label for="namingScheme">Naming scheme for new uploads</label>
-      <input id="namingScheme" name="namingScheme" type="text" placeholder="{{original}}-{{timestamp}}" maxlength="100">
-      <p class="settings-help">Available tokens: <code>{{original}}</code>, <code>{{date}}</code>, <code>{{time}}</code>, <code>{{timestamp}}</code>, <code>{{counter}}</code>. File extension is preserved.</p>
-      <div class="settings-preview">
-        Preview: <strong id="namingPreview">photo-2024-01-01</strong>
-      </div>
-      <div class="modal-actions">
-        <button type="button" id="settingsCancel">Cancel</button>
-        <button type="submit">Save</button>
       </div>
     </form>
   </div>
@@ -949,9 +1001,9 @@
       <span class="tab-icon"><img src="icons/gallery.png" alt="Photos"></span>
       <span>Photos</span>
     </button>
-    <button data-tab="themes">
-      <span class="tab-icon"><img src="icons/settings.png" alt="Themes"></span>
-      <span>Themes</span>
+    <button data-tab="settings">
+      <span class="tab-icon"><img src="icons/settings.png" alt="Settings"></span>
+      <span>Settings</span>
     </button>
   </div>
   <div class="selection-actions hidden" id="selectionActions">
@@ -1097,7 +1149,7 @@ const SPECIAL_ALL = 'all';
 const SPECIAL_UNSORTED = 'unsorted';
 const TAB_FOLDERS = 'folders';
 const TAB_ALBUMS = 'albums';
-const TAB_THEMES = 'themes';
+const TAB_SETTINGS = 'settings';
 
 let db;
 let folders = [];
@@ -1156,10 +1208,10 @@ const albumModalTitle = document.getElementById('albumModalTitle');
 const albumForm = document.getElementById('albumForm');
 const albumInput = document.getElementById('albumName');
 const albumCancel = document.getElementById('albumCancel');
-const settingsBtn = document.getElementById('settingsBtn');
-const settingsModal = document.getElementById('settingsModal');
-const settingsForm = document.getElementById('settingsForm');
-const settingsCancel = document.getElementById('settingsCancel');
+const settingsTabButtons = document.querySelectorAll('[data-settings-tab]');
+const settingsPanels = document.querySelectorAll('[data-settings-panel]');
+const uploadSettingsForm = document.getElementById('uploadSettingsForm');
+const tokenButtons = uploadSettingsForm ? uploadSettingsForm.querySelectorAll('button[data-token]') : [];
 const namingInput = document.getElementById('namingScheme');
 const namingPreview = document.getElementById('namingPreview');
 const photoViewer = document.getElementById('photoViewer');
@@ -1194,8 +1246,8 @@ const albumMediaEmptyEl = document.getElementById('albumMediaEmpty');
 const albumBackBtn = document.getElementById('albumBackBtn');
 const albumMoreBtn = document.getElementById('albumMoreBtn');
 const albumMoreMenu = document.getElementById('albumMoreMenu');
-const themeShellEl = document.querySelector('.theme-shell');
-const themeGridEl = document.getElementById('themeGrid');
+const settingsShellEl = document.querySelector('.settings-shell');
+const settingsThemeGridEl = document.getElementById('themeGrid');
 
 let viewerUrl;
 let currentViewList = [];
@@ -1228,8 +1280,12 @@ if (!settings.namingScheme || settings.namingScheme === '{{original}}') {
   settings.namingScheme = defaultSettings.namingScheme;
   saveSettings();
 }
+if (namingInput) {
+  namingInput.value = settings.namingScheme || defaultSettings.namingScheme;
+}
 let driveViewMode = getFolderViewMode(currentFolder);
 let albumViewMode = settings.viewPrefs?.albumGrid || 'grid';
+let activeSettingsPanel = 'themes';
 let chromeHidden = false;
 let isZoomed = false;
 let panX = 0;
@@ -1306,8 +1362,8 @@ function applyTheme(themeId, persist = false) {
 }
 
 function renderThemes() {
-  if (!themeGridEl) return;
-  themeGridEl.innerHTML = '';
+  if (!settingsThemeGridEl) return;
+  settingsThemeGridEl.innerHTML = '';
   const activeId = settings.theme || defaultSettings.theme;
   THEMES.forEach((theme) => {
     const card = document.createElement('button');
@@ -1329,7 +1385,7 @@ function renderThemes() {
       applyTheme(theme.id, true);
       renderThemes();
     });
-    themeGridEl.appendChild(card);
+    settingsThemeGridEl.appendChild(card);
   });
 }
 
@@ -1976,11 +2032,14 @@ function setActiveTab(tab) {
   tabButtons.forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tab));
   driveShellEl?.classList.toggle('hidden', tab !== TAB_FOLDERS);
   albumShellEl?.classList.toggle('hidden', tab !== TAB_ALBUMS);
-  themeShellEl?.classList.toggle('hidden', tab !== TAB_THEMES);
+  settingsShellEl?.classList.toggle('hidden', tab !== TAB_SETTINGS);
   if (tab === TAB_FOLDERS) {
     driveViewMode = getFolderViewMode(currentFolder);
   }
-  if (tab === TAB_THEMES && selectionMode) {
+  if (tab === TAB_SETTINGS) {
+    setSettingsPanel(activeSettingsPanel || 'themes');
+  }
+  if (tab === TAB_SETTINGS && selectionMode) {
     toggleSelectionMode(false);
   }
   updateHeader();
@@ -1998,14 +2057,40 @@ tabButtons.forEach(btn => btn.addEventListener('click', () => {
     case TAB_ALBUMS:
       setActiveTab(TAB_ALBUMS);
       break;
-    case TAB_THEMES:
-      setActiveTab(TAB_THEMES);
+    case TAB_SETTINGS:
+      setActiveTab(TAB_SETTINGS);
       break;
     default:
       alert('This tab is coming soon.');
       break;
   }
 }));
+
+function setSettingsPanel(panelId = 'themes') {
+  const resolved = panelId === 'uploads' ? 'uploads' : 'themes';
+  activeSettingsPanel = resolved;
+  settingsTabButtons.forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.settingsTab === resolved);
+  });
+  settingsPanels.forEach(panel => {
+    panel.classList.toggle('hidden', panel.dataset.settingsPanel !== resolved);
+  });
+  if (resolved === 'uploads' && namingInput) {
+    namingInput.value = settings.namingScheme || defaultSettings.namingScheme;
+    updateNamingPreview();
+    setTimeout(() => namingInput.focus(), 0);
+  }
+}
+
+settingsTabButtons.forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (btn.dataset.settingsTab) {
+      setSettingsPanel(btn.dataset.settingsTab);
+    }
+  });
+});
+
+setSettingsPanel(activeSettingsPanel);
 
 function updateHeader() {
   if (activeTab === TAB_FOLDERS) {
@@ -2499,6 +2584,40 @@ function updateNamingPreview() {
 }
 
 namingInput?.addEventListener('input', updateNamingPreview);
+tokenButtons?.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const token = btn.dataset.token;
+    if (!token || !namingInput) return;
+    const start = namingInput.selectionStart ?? namingInput.value.length;
+    const end = namingInput.selectionEnd ?? start;
+    const value = namingInput.value;
+    namingInput.value = value.slice(0, start) + token + value.slice(end);
+    const cursor = start + token.length;
+    requestAnimationFrame(() => {
+      namingInput.focus();
+      namingInput.setSelectionRange(cursor, cursor);
+    });
+    updateNamingPreview();
+  });
+});
+
+uploadSettingsForm?.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const template = namingInput?.value?.trim() || defaultSettings.namingScheme;
+  settings.namingScheme = template;
+  saveSettings();
+  updateNamingPreview();
+  const submitBtn = uploadSettingsForm.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    const original = submitBtn.textContent;
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saved';
+    setTimeout(() => {
+      submitBtn.disabled = false;
+      submitBtn.textContent = original;
+    }, 1200);
+  }
+});
 
 albumCancel?.addEventListener('click', closeModal);
 modal?.addEventListener('click', (e) => {
@@ -2532,29 +2651,6 @@ function openCreateModal(type) {
 
 function closeModal() {
   modal.classList.add('hidden');
-}
-
-settingsBtn?.addEventListener('click', () => {
-  namingInput.value = settings.namingScheme || defaultSettings.namingScheme;
-  updateNamingPreview();
-  settingsModal.classList.remove('hidden');
-  setTimeout(() => namingInput.focus(), 10);
-});
-
-settingsCancel?.addEventListener('click', closeSettings);
-settingsModal?.addEventListener('click', (e) => {
-  if (e.target === settingsModal) closeSettings();
-});
-settingsForm?.addEventListener('submit', (e) => {
-  e.preventDefault();
-  settings.namingScheme = namingInput.value.trim() || defaultSettings.namingScheme;
-  saveSettings();
-  updateNamingPreview();
-  closeSettings();
-});
-
-function closeSettings() {
-  settingsModal.classList.add('hidden');
 }
 
 updateNamingPreview();
@@ -3189,7 +3285,7 @@ async function refreshGallery() {
 
 function renderGallery() {
   const isDrive = activeTab === TAB_FOLDERS;
-  if (activeTab === TAB_THEMES) {
+  if (activeTab === TAB_SETTINGS) {
     driveItemsEl.innerHTML = '';
     document.getElementById('emptyState')?.classList.add('hidden');
     albumMediaEl.innerHTML = '';
@@ -3854,7 +3950,6 @@ async function handleInfo() {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     if (!modal.classList.contains('hidden')) closeModal();
-    if (!settingsModal.classList.contains('hidden')) closeSettings();
     if (!photoViewer.classList.contains('hidden')) closeViewer();
     if (!inputModal.classList.contains('hidden')) closeInputModal(null);
     if (!textFileModal.classList.contains('hidden')) closeTextFileModal(null);
