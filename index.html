@@ -243,7 +243,7 @@
     .selection-group.hidden { display:none; }
     .bottom-tabs button { background:none; border:none; color:var(--muted); font-weight:600; padding:6px 14px; border-radius:999px; cursor:pointer; transition:background .2s ease, color .2s ease; display:flex; flex-direction:column; align-items:center; gap:6px; }
     .bottom-tabs button.active { background:rgba(56,189,248,.12); color:var(--text); }
-    .bottom-tabs .selection-actions button { color:var(--text); border:1px solid rgba(148,163,184,.3); background:rgba(15,23,42,.8); }
+    .bottom-tabs .selection-actions button { color:var(--text); border:none; background:none; padding:0; }
     .bottom-tabs .selection-actions button:disabled { opacity:.4; cursor:not-allowed; }
     .bottom-tabs.action-mode .tab-buttons { display:none; }
     .bottom-tabs.action-mode .selection-actions { display:flex; }
@@ -955,18 +955,18 @@
     </button>
   </div>
   <div class="selection-actions hidden" id="selectionActions">
-    <button type="button" id="selectionCancelBtn"><img src="icons/cancel.png" alt="" class="inline-icon"> Cancel</button>
-    <button type="button" id="selectionAllBtn"><img src="icons/select-all.png" alt="" class="inline-icon"> Select All</button>
+    <button type="button" id="selectionCancelBtn" title="Cancel selection"><img src="icons/cancel.png" alt="" class="inline-icon"></button>
+    <button type="button" id="selectionAllBtn" title="Select all"><img src="icons/select-all.png" alt="" class="inline-icon"></button>
     <div id="mediaSelectionActions" class="selection-group">
-      <button type="button" data-bulk="move" disabled><img src="icons/expand.png" alt="" class="inline-icon"> Move</button>
-      <button type="button" data-bulk="copy" disabled><img src="icons/copy.png" alt="" class="inline-icon"> Copy</button>
-      <button type="button" data-bulk="delete" disabled><img src="icons/remove-file.png" alt="" class="inline-icon"> Delete</button>
-      <button type="button" data-bulk="album" disabled><img src="icons/add-file.png" alt="" class="inline-icon"> Add to album</button>
+      <button type="button" data-bulk="move" disabled title="Move"><img src="icons/expand.png" alt="" class="inline-icon"></button>
+      <button type="button" data-bulk="copy" disabled title="Copy"><img src="icons/copy.png" alt="" class="inline-icon"></button>
+      <button type="button" data-bulk="delete" disabled title="Delete"><img src="icons/remove-file.png" alt="" class="inline-icon"></button>
+      <button type="button" data-bulk="album" disabled title="Add to album"><img src="icons/add-file.png" alt="" class="inline-icon"></button>
     </div>
     <div id="albumSelectionActions" class="selection-group hidden">
-      <button type="button" id="copyAlbumsToFolderBtn" disabled><img src="icons/folder.png" alt="" class="inline-icon"> Copy to folder</button>
-      <button type="button" id="copyAlbumsToAlbumBtn" disabled><img src="icons/gallery.png" alt="" class="inline-icon"> Copy to album</button>
-      <button type="button" id="deleteAlbumsBtn" disabled><img src="icons/remove-file.png" alt="" class="inline-icon"> Delete albums</button>
+      <button type="button" id="copyAlbumsToFolderBtn" disabled title="Copy to folder"><img src="icons/expand.png" alt="" class="inline-icon"></button>
+      <button type="button" id="copyAlbumsToAlbumBtn" disabled title="Copy to album"><img src="icons/gallery.png" alt="" class="inline-icon"></button>
+      <button type="button" id="deleteAlbumsBtn" disabled title="Delete albums"><img src="icons/remove-file.png" alt="" class="inline-icon"></button>
     </div>
   </div>
 </nav>
