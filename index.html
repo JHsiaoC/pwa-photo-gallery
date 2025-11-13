@@ -1038,7 +1038,7 @@ const listPickerList = document.getElementById('listPickerList');
 const listPickerCancel = document.getElementById('listPickerCancel');
 let listPickerModalResolver = null;
 const listPickerPreviewUrls = [];
-const albumThumbUrls = [];
+const mediaUrlCache = new Map();
 const modal = document.getElementById('albumModal');
 const albumModalTitle = document.getElementById('albumModalTitle');
 const albumForm = document.getElementById('albumForm');
@@ -1300,18 +1300,6 @@ function cleanupPickerPreviews() {
   }
 }
 
-function trackAlbumThumbUrl(url) {
-  if (!url) return;
-  albumThumbUrls.push(url);
-}
-
-function cleanupAlbumThumbs() {
-  while (albumThumbUrls.length) {
-    const url = albumThumbUrls.pop();
-    URL.revokeObjectURL(url);
-  }
-}
-
 function openListPicker({ title, items }) {
   if (!listPickerModal) return Promise.resolve(null);
   cleanupPickerPreviews();
@@ -1493,6 +1481,7 @@ function createFolderCard(folder, count = 0) {
   const isSelected = selectedFolders.has(folder.id);
   const isActive = folder.id === currentFolder;
   card.className = 'folder-card' + (isActive ? ' active' : '') + (isSelected ? ' selected' : '');
+  card.dataset.folderId = String(folder.id);
   const indicator = document.createElement('span');
   indicator.className = 'select-indicator';
   card.appendChild(indicator);
@@ -1525,6 +1514,7 @@ function createMediaTile(item, idx) {
   card.type = 'button';
   const isSelected = selectedMedia.has(item.id);
   card.className = 'folder-card media-card' + (isSelected ? ' selected' : '');
+  card.dataset.mediaId = String(item.id);
   const indicator = document.createElement('span');
   indicator.className = 'select-indicator';
   card.appendChild(indicator);
@@ -1532,32 +1522,32 @@ function createMediaTile(item, idx) {
   thumb.className = 'thumb';
   const isVideo = item.kind === 'video' || item.type?.startsWith('video/');
   const isText = item.kind === 'text' || item.type === 'text/plain';
-  let url = null;
-  if (isVideo) {
-    const video = document.createElement('video');
-    video.muted = true;
-    video.loop = true;
-    video.autoplay = true;
-    video.playsInline = true;
-    url = URL.createObjectURL(item.blob);
-    video.src = url;
-    video.onloadeddata = () => { URL.revokeObjectURL(url); };
-    video.onerror = () => { URL.revokeObjectURL(url); };
-    thumb.appendChild(video);
-  } else if (isText) {
+  if (isText) {
     const textPreview = document.createElement('div');
     textPreview.className = 'text-card';
     textPreview.textContent = item.preview || item.name || 'Text file';
     thumb.appendChild(textPreview);
   } else {
-    const img = document.createElement('img');
-    img.loading = 'lazy';
-    img.alt = item.name || 'Media file';
-    url = URL.createObjectURL(item.blob);
-    img.src = url;
-    img.onload = () => { URL.revokeObjectURL(url); };
-    img.onerror = () => { URL.revokeObjectURL(url); };
-    thumb.appendChild(img);
+    const thumbUrl = getThumbnailUrl(item);
+    if (thumbUrl) {
+      const img = document.createElement('img');
+      img.loading = 'lazy';
+      img.decoding = 'async';
+      img.alt = item.name || 'Media file';
+      img.src = thumbUrl;
+      thumb.appendChild(img);
+    } else {
+      const placeholder = document.createElement('div');
+      placeholder.className = 'text-card';
+      placeholder.textContent = item.name || 'Media file';
+      thumb.appendChild(placeholder);
+    }
+  }
+  if (isVideo) {
+    const flag = document.createElement('span');
+    flag.className = 'media-flag';
+    flag.textContent = '🎬 Video';
+    card.appendChild(flag);
   }
   card.appendChild(thumb);
   const name = document.createElement('div');
@@ -1592,7 +1582,6 @@ function createMediaTile(item, idx) {
 
 function renderAlbumGrid() {
   if (!albumGridEl) return;
-  cleanupAlbumThumbs();
   const showingAlbums = !currentAlbumId;
   albumGridEl.classList.toggle('hidden', !showingAlbums);
   albumGridEl.classList.toggle('list-view', albumViewMode === 'list');
@@ -1650,11 +1639,11 @@ function renderAlbumGrid() {
     const isActive = album.id === currentAlbumId;
     const isSelected = selectedAlbums.has(album.id);
     card.className = 'album-card' + (isActive ? ' active' : '') + (isSelected ? ' selected' : '');
+    card.dataset.albumId = String(album.id);
     const thumb = document.createElement('div');
     thumb.className = 'album-card-thumb';
     const preview = getAlbumPreviewMedia(album.id);
     if (preview) {
-      const isVideo = preview.kind === 'video' || preview.type?.startsWith('video/');
       const isText = preview.kind === 'text' || preview.type === 'text/plain';
       if (isText) {
         const textBlock = document.createElement('div');
@@ -1662,29 +1651,18 @@ function renderAlbumGrid() {
         textBlock.textContent = preview.preview || preview.name || 'Text file';
         thumb.appendChild(textBlock);
       } else {
-        const media = document.createElement(isVideo ? 'video' : 'img');
-        if (isVideo) {
-          media.muted = true;
-          media.loop = true;
-          media.playsInline = true;
-          media.autoplay = true;
-        } else {
+        const thumbUrl = getThumbnailUrl(preview);
+        if (thumbUrl) {
+          const media = document.createElement('img');
           media.loading = 'lazy';
+          media.decoding = 'async';
           media.alt = album.name;
+          media.src = thumbUrl;
+          thumb.appendChild(media);
         }
-        const url = URL.createObjectURL(preview.blob);
-        trackAlbumThumbUrl(url);
-        media.src = url;
-        if (isVideo) {
-          media.onloadeddata = () => URL.revokeObjectURL(url);
-          media.onerror = () => URL.revokeObjectURL(url);
-        } else {
-          media.onload = () => URL.revokeObjectURL(url);
-          media.onerror = () => URL.revokeObjectURL(url);
-        }
-        thumb.appendChild(media);
       }
-    } else {
+    }
+    if (!thumb.childNodes.length) {
       const placeholder = document.createElement('img');
       placeholder.src = 'icons/gallery.png';
       placeholder.alt = '';
@@ -1720,6 +1698,7 @@ function renderAlbumGrid() {
 
   albumGridEl.appendChild(fragment);
   updateSelectionChrome();
+  updateSelectionIndicators();
 }
 
 function setActiveFolder(value) {
@@ -1932,7 +1911,10 @@ async function copyAlbumsToFolderSelected() {
       kind: photo.kind,
       size: photo.size,
       preview: photo.preview,
-      folderId: targetFolder
+      folderId: targetFolder,
+      previewBlob: photo.previewBlob || null,
+      previewWidth: photo.previewWidth || 0,
+      previewHeight: photo.previewHeight || 0
     };
     await idbAdd(db, STORE, entry);
   }
@@ -1993,10 +1975,11 @@ function getFolderItemCount(folderId) {
 function buildFolderPickerOption(folderId, label) {
   const count = getFolderItemCount(folderId);
   const subtitle = folderId == null ? `Top level • ${formatCountLabel(count)}` : formatCountLabel(count);
+  const previewItem = getFolderPreviewMedia(folderId);
   return {
     label,
     value: folderId,
-    previewMedia: getFolderPreviewMedia(folderId),
+    previewMedia: buildPickerPreviewPayload(previewItem),
     icon: 'icons/folder.png',
     subtitle
   };
@@ -2025,10 +2008,11 @@ function getAlbumPreviewMedia(albumId) {
 function buildAlbumPickerOption(album) {
   const membership = albumMembership.get(album.id);
   const count = membership ? membership.size : 0;
+  const previewItem = getAlbumPreviewMedia(album.id);
   return {
     label: album.name,
     value: album.id,
-    previewMedia: getAlbumPreviewMedia(album.id),
+    previewMedia: buildPickerPreviewPayload(previewItem),
     icon: 'icons/gallery.png',
     subtitle: formatCountLabel(count)
   };
@@ -2134,7 +2118,10 @@ async function bulkCopySelected() {
       kind: item.kind,
       size: item.size,
       preview: item.preview,
-      folderId: targetFolder
+      folderId: targetFolder,
+      previewBlob: item.previewBlob || null,
+      previewWidth: item.previewWidth || 0,
+      previewHeight: item.previewHeight || 0
     };
     await idbAdd(db, STORE, clone);
   }
@@ -2539,6 +2526,7 @@ async function addFiles(fileList) {
     const captured = file.lastModified ? Number(file.lastModified) : created;
     const meta = await getMediaMeta(blob, blob.type || file.type || 'image/jpeg');
     const safeName = generateFileName(file);
+    const previewData = await generatePreviewBlob(blob, meta.kind, blob.type || file.type);
     await idbAdd(db, STORE, {
       blob,
       name: safeName,
@@ -2550,7 +2538,10 @@ async function addFiles(fileList) {
       duration: meta.duration || 0,
       kind: meta.kind || 'image',
       size: blob.size || arrayBuf.byteLength || 0,
-      folderId: targetFolder
+      folderId: targetFolder,
+      previewBlob: previewData?.blob || null,
+      previewWidth: previewData?.width || 0,
+      previewHeight: previewData?.height || 0
     });
   }
   await refreshGallery();
@@ -2562,6 +2553,12 @@ async function addInlineMedia({ name, blob, type }) {
   const created = Date.now();
   const pseudoFile = { name, type, lastModified: created };
   const safeName = generateFileName(pseudoFile);
+  let meta = { width: 0, height: 0, duration: 0, kind: type.startsWith('video/') ? 'video' : type.startsWith('image/') ? 'image' : 'text' };
+  let previewData = null;
+  if (meta.kind === 'image' || meta.kind === 'video') {
+    meta = await getMediaMeta(blob, type);
+    previewData = await generatePreviewBlob(blob, meta.kind, type);
+  }
   const textPreview = type === 'text/plain' ? (await blob.text()).slice(0, 200) : '';
   await idbAdd(db, STORE, {
     blob,
@@ -2569,13 +2566,16 @@ async function addInlineMedia({ name, blob, type }) {
     type,
     created,
     captured: created,
-    width: 0,
-    height: 0,
-    duration: 0,
-    kind: type.startsWith('video/') ? 'video' : type.startsWith('image/') ? 'image' : 'text',
+    width: meta.width || 0,
+    height: meta.height || 0,
+    duration: meta.duration || 0,
+    kind: meta.kind,
     size: blob.size || 0,
     preview: textPreview,
-    folderId: typeof currentFolder === 'number' ? currentFolder : null
+    folderId: typeof currentFolder === 'number' ? currentFolder : null,
+    previewBlob: previewData?.blob || null,
+    previewWidth: previewData?.width || 0,
+    previewHeight: previewData?.height || 0
   });
   await refreshGallery();
   resetDriveSearch(true);
@@ -2640,6 +2640,166 @@ function mimeToExtension(type = '') {
   return '';
 }
 
+const PREVIEW_MAX_DIMENSION = 512;
+
+function clearMediaUrlCache() {
+  mediaUrlCache.forEach((url) => URL.revokeObjectURL(url));
+  mediaUrlCache.clear();
+}
+
+function mediaCacheKey(item, variant) {
+  if (!item || item.id == null) return null;
+  return `${item.id}:${variant}`;
+}
+
+function getThumbnailUrl(item) {
+  const key = mediaCacheKey(item, 'thumb');
+  if (!key) return null;
+  if (mediaUrlCache.has(key)) return mediaUrlCache.get(key);
+  const blobSource = item.previewBlob || (item.kind === 'text' ? null : item.blob);
+  if (!blobSource) return null;
+  const url = URL.createObjectURL(blobSource);
+  mediaUrlCache.set(key, url);
+  return url;
+}
+
+function buildPickerPreviewPayload(item) {
+  if (!item) return null;
+  const blob = item.previewBlob || (item.kind === 'text' ? null : item.blob);
+  if (!blob) {
+    return item.kind === 'text'
+      ? { kind: 'text', preview: item.preview, name: item.name }
+      : null;
+  }
+  return {
+    blob,
+    kind: item.kind,
+    type: item.previewBlob ? 'image/webp' : (item.type || 'image/jpeg'),
+    preview: item.preview,
+    name: item.name
+  };
+}
+
+async function generatePreviewBlob(blob, kind, mime) {
+  if (!blob) return null;
+  const type = mime || blob.type || '';
+  const normalizedKind = kind || (type.startsWith('video/') ? 'video' : type.startsWith('image/') ? 'image' : '');
+  try {
+    if (normalizedKind === 'image') {
+      return await createImagePreviewBlob(blob);
+    }
+    if (normalizedKind === 'video') {
+      return await createVideoPreviewBlob(blob);
+    }
+  } catch (err) {
+    console.warn('Preview generation failed', err);
+  }
+  return null;
+}
+
+async function createImagePreviewBlob(blob, maxDim = PREVIEW_MAX_DIMENSION) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+    img.onload = async () => {
+      const scale = Math.min(1, maxDim / Math.max(img.width || maxDim, img.height || maxDim));
+      const width = Math.max(1, Math.round((img.width || maxDim) * scale));
+      const height = Math.max(1, Math.round((img.height || maxDim) * scale));
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        URL.revokeObjectURL(url);
+        resolve(null);
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      const previewBlob = await canvasToBlob(canvas, 'image/webp', 0.82);
+      URL.revokeObjectURL(url);
+      resolve(previewBlob ? { blob: previewBlob, width, height } : null);
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    img.src = url;
+  });
+}
+
+async function createVideoPreviewBlob(blob, maxDim = PREVIEW_MAX_DIMENSION) {
+  return new Promise((resolve) => {
+    const video = document.createElement('video');
+    const url = URL.createObjectURL(blob);
+    let resolved = false;
+    const cleanup = () => {
+      URL.revokeObjectURL(url);
+      video.removeAttribute('src');
+      video.load();
+      video.remove();
+    };
+    const finish = (payload) => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      resolve(payload);
+    };
+    video.muted = true;
+    video.playsInline = true;
+    video.preload = 'metadata';
+    video.onloadeddata = async () => {
+      try {
+        const width = video.videoWidth || maxDim;
+        const height = video.videoHeight || maxDim;
+        const scale = Math.min(1, maxDim / Math.max(width, height));
+        const canvasWidth = Math.max(1, Math.round(width * scale));
+        const canvasHeight = Math.max(1, Math.round(height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = canvasWidth;
+        canvas.height = canvasHeight;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          finish(null);
+          return;
+        }
+        ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
+        const previewBlob = await canvasToBlob(canvas, 'image/webp', 0.8);
+        finish(previewBlob ? { blob: previewBlob, width: canvasWidth, height: canvasHeight } : null);
+      } catch (err) {
+        console.warn('Video preview capture failed', err);
+        finish(null);
+      }
+    };
+    video.onerror = () => finish(null);
+    video.src = url;
+  });
+}
+
+function canvasToBlob(canvas, type = 'image/webp', quality = 0.82) {
+  return new Promise((resolve) => {
+    if (canvas.toBlob) {
+      canvas.toBlob((blob) => resolve(blob), type, quality);
+      return;
+    }
+    const dataUrl = canvas.toDataURL(type, quality);
+    resolve(dataUrlToBlob(dataUrl));
+  });
+}
+
+function dataUrlToBlob(dataUrl) {
+  if (!dataUrl) return null;
+  const [header, data] = dataUrl.split(',');
+  const mimeMatch = header?.match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+  const binary = atob(data || '');
+  const len = binary.length;
+  const array = new Uint8Array(len);
+  for (let i = 0; i < len; i++) {
+    array[i] = binary.charCodeAt(i);
+  }
+  return new Blob([array], { type: mime });
+}
+
 
 function sanitizeSegment(value) {
   return value.toLowerCase().replace(/[^\w-]+/g, '-').replace(/-+/g, '-').replace(/^-+|-+$/g, '');
@@ -2677,6 +2837,7 @@ function generateFileName(file, preview = false, templateOverride) {
 
 async function refreshGallery() {
   const raw = await idbAll(db, STORE);
+  clearMediaUrlCache();
   photoCache = raw.map(item => {
     if (item.folderId == null && item.albumId != null) item.folderId = item.albumId;
     if (item.captured == null) item.captured = item.created;
@@ -2685,6 +2846,9 @@ async function refreshGallery() {
     if (item.width == null) item.width = 0;
     if (item.height == null) item.height = 0;
     if (item.size == null) item.size = item.blob?.size || 0;
+    if (!('previewWidth' in item)) item.previewWidth = 0;
+    if (!('previewHeight' in item)) item.previewHeight = 0;
+    if (!('previewBlob' in item)) item.previewBlob = null;
     return item;
   });
   renderFolderList();
@@ -2693,6 +2857,7 @@ async function refreshGallery() {
 
 function renderGallery() {
   const isDrive = activeTab === TAB_FOLDERS;
+  driveShellEl?.classList.toggle('selecting', selectionMode && activeTab === TAB_FOLDERS);
   if (activeTab === TAB_THEMES) {
     driveItemsEl.innerHTML = '';
     document.getElementById('emptyState')?.classList.add('hidden');
@@ -2701,6 +2866,7 @@ function renderGallery() {
     albumBackBtn?.classList.add('hidden');
     albumMoreBtn?.classList.add('hidden');
     updateSelectionChrome();
+    updateSelectionIndicators();
     return;
   }
   const container = isDrive ? driveItemsEl : albumMediaEl;
@@ -2712,7 +2878,6 @@ function renderGallery() {
     container.innerHTML = '';
     driveViewMode = getFolderViewMode(currentFolder);
     container.classList.toggle('folder-list-view', driveViewMode === 'list');
-    driveShellEl?.classList.toggle('selecting', selectionMode);
     albumEmpty?.classList.add('hidden');
     const parentId = typeof currentFolder === 'number' ? currentFolder : null;
     const counts = photoCache.reduce((acc, item) => {
@@ -2751,6 +2916,7 @@ function renderGallery() {
           : 'No media in <strong>' + emptyAlbumLabel.textContent + '</strong> yet.';
       }
       updateSelectionChrome();
+      updateSelectionIndicators();
       return;
     }
     driveEmpty?.classList.add('hidden');
@@ -2759,6 +2925,7 @@ function renderGallery() {
     mediaList.forEach((item, idx) => fragment.appendChild(createMediaTile(item, idx)));
     container.appendChild(fragment);
     updateSelectionChrome();
+    updateSelectionIndicators();
     return;
   }
 
@@ -2767,6 +2934,7 @@ function renderGallery() {
   driveEmpty?.classList.add('hidden');
   const viewingAlbum = !!currentAlbumId;
   albumMediaPanel?.classList.toggle('hidden', !viewingAlbum);
+  albumMediaPanel?.classList.toggle('selecting', selectionMode && viewingAlbum);
   albumMediaPanel?.classList.toggle('selecting', selectionMode && viewingAlbum);
   albumBackBtn?.classList.toggle('hidden', !viewingAlbum);
   albumMoreBtn?.classList.toggle('hidden', !viewingAlbum);
@@ -2777,6 +2945,7 @@ function renderGallery() {
     visibleFolderIds = [];
     visibleMediaIds = [];
     updateSelectionChrome();
+    updateSelectionIndicators();
     return;
   }
   const ids = albumMembership.get(currentAlbumId);
@@ -2786,6 +2955,7 @@ function renderGallery() {
     visibleFolderIds = [];
     visibleMediaIds = [];
     updateSelectionChrome();
+    updateSelectionIndicators();
     return;
   }
   visibleFolderIds = [];
@@ -2796,42 +2966,40 @@ function renderGallery() {
   visibleMediaIds = list.map(item => item.id);
   albumEmpty?.classList.add('hidden');
   list.forEach((item, idx) => {
-    const url = URL.createObjectURL(item.blob);
     const isVideo = item.kind === 'video' || item.type?.startsWith('video/');
     const isText = item.kind === 'text' || item.type === 'text/plain';
     const card = document.createElement('button');
     card.type = 'button';
     const isSelected = selectedMedia.has(item.id);
     card.className = 'card album-media-card' + (isSelected ? ' selected' : '');
+    card.dataset.mediaId = String(item.id);
     const indicator = document.createElement('span');
     indicator.className = 'select-indicator';
     card.appendChild(indicator);
     let mediaEl;
-    if (isVideo) {
-      mediaEl = document.createElement('video');
-      mediaEl.muted = true;
-      mediaEl.loop = true;
-      mediaEl.autoplay = true;
-      mediaEl.playsInline = true;
-      mediaEl.src = url;
-      mediaEl.onloadeddata = () => URL.revokeObjectURL(url);
-      mediaEl.onerror = () => URL.revokeObjectURL(url);
-      const flag = document.createElement('span');
-      flag.className = 'media-flag';
-      flag.textContent = '🎬 Video';
-      card.appendChild(flag);
-    } else if (isText) {
-      URL.revokeObjectURL(url);
+    if (isText) {
       mediaEl = document.createElement('div');
       mediaEl.className = 'text-card';
       mediaEl.textContent = item.preview || item.name || 'Text file';
     } else {
-      mediaEl = document.createElement('img');
-      mediaEl.loading = 'lazy';
-      mediaEl.alt = item.name;
-      mediaEl.src = url;
-      mediaEl.onload = () => URL.revokeObjectURL(url);
-      mediaEl.onerror = () => URL.revokeObjectURL(url);
+      const thumbUrl = getThumbnailUrl(item);
+      if (thumbUrl) {
+        mediaEl = document.createElement('img');
+        mediaEl.loading = 'lazy';
+        mediaEl.decoding = 'async';
+        mediaEl.alt = item.name;
+        mediaEl.src = thumbUrl;
+      } else {
+        mediaEl = document.createElement('div');
+        mediaEl.className = 'text-card';
+        mediaEl.textContent = item.name || 'Media';
+      }
+    }
+    if (isVideo) {
+      const flag = document.createElement('span');
+      flag.className = 'media-flag';
+      flag.textContent = '🎬 Video';
+      card.appendChild(flag);
     }
     card.appendChild(mediaEl);
     const meta = document.createElement('div');
@@ -2860,6 +3028,7 @@ function renderGallery() {
     container.appendChild(card);
   });
   updateSelectionChrome();
+  updateSelectionIndicators();
 }
 
 function sortPhotos(list) {
@@ -3117,16 +3286,21 @@ function handleViewChange(mode) {
 
 function toggleSelectionMode(force) {
   const next = typeof force === 'boolean' ? force : !selectionMode;
-  selectionMode = next;
-  if (!selectionMode) {
+  if (next === selectionMode) {
+    driveShellEl?.classList.toggle('selecting', selectionMode && activeTab === TAB_FOLDERS);
+    albumMediaPanel?.classList.toggle('selecting', selectionMode && activeTab === TAB_ALBUMS && currentAlbumId);
+    return;
+  }
+  if (!next) {
     selectedFolders.clear();
     selectedMedia.clear();
     selectedAlbums.clear();
   }
+  selectionMode = next;
   driveShellEl?.classList.toggle('selecting', selectionMode && activeTab === TAB_FOLDERS);
+  albumMediaPanel?.classList.toggle('selecting', selectionMode && activeTab === TAB_ALBUMS && currentAlbumId);
   updateSelectionChrome();
-  renderGallery();
-  renderAlbumGrid();
+  updateSelectionIndicators();
 }
 
 function selectAllVisible() {
@@ -3134,8 +3308,8 @@ function selectAllVisible() {
     if (!visibleAlbumIds.length) return alert('Nothing to select here.');
     if (!selectionMode) toggleSelectionMode(true);
     selectedAlbums = new Set(visibleAlbumIds);
-    renderAlbumGrid();
     updateSelectionChrome();
+    updateSelectionIndicators();
     return;
   }
   const hasAny = visibleFolderIds.length || visibleMediaIds.length;
@@ -3148,8 +3322,8 @@ function selectAllVisible() {
   }
   selectedFolders = new Set(visibleFolderIds);
   selectedMedia = new Set(visibleMediaIds);
-  renderGallery();
   updateSelectionChrome();
+  updateSelectionIndicators();
 }
 
 function handleAlbumSort(mode) {
@@ -3165,6 +3339,48 @@ function handleAlbumView(mode) {
     saveSettings();
   }
   renderAlbumGrid();
+}
+
+function updateSelectionIndicators() {
+  syncDriveSelectionIndicators();
+  syncAlbumGridSelectionIndicators();
+  syncAlbumMediaSelectionIndicators();
+}
+
+function syncDriveSelectionIndicators() {
+  if (!driveItemsEl) return;
+  driveItemsEl.querySelectorAll('.folder-card[data-folder-id]').forEach((card) => {
+    const id = Number(card.dataset.folderId);
+    if (!Number.isNaN(id)) {
+      card.classList.toggle('selected', selectedFolders.has(id));
+    }
+  });
+  driveItemsEl.querySelectorAll('.media-card[data-media-id]').forEach((card) => {
+    const id = Number(card.dataset.mediaId);
+    if (!Number.isNaN(id)) {
+      card.classList.toggle('selected', selectedMedia.has(id));
+    }
+  });
+}
+
+function syncAlbumGridSelectionIndicators() {
+  if (!albumGridEl) return;
+  albumGridEl.querySelectorAll('.album-card[data-album-id]').forEach((card) => {
+    const id = Number(card.dataset.albumId);
+    if (!Number.isNaN(id)) {
+      card.classList.toggle('selected', selectedAlbums.has(id));
+    }
+  });
+}
+
+function syncAlbumMediaSelectionIndicators() {
+  if (!albumMediaEl) return;
+  albumMediaEl.querySelectorAll('.album-media-card[data-media-id]').forEach((card) => {
+    const id = Number(card.dataset.mediaId);
+    if (!Number.isNaN(id)) {
+      card.classList.toggle('selected', selectedMedia.has(id));
+    }
+  });
 }
 
 function onViewerPointerDown(e) {
