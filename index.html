@@ -191,8 +191,6 @@
     .folder-card.active { border-color: var(--accent); }
     .folder-card .name { font-weight:600; font-size:16px; }
     .folder-card .count { font-size:12px; color:var(--muted); }
-    .folder-card .select-indicator { position:absolute; top:10px; right:10px; width:20px; height:20px; border-radius:50%; border:2px solid rgba(148,163,184,.4); }
-    .folder-card.selected .select-indicator { background:var(--accent); border-color:var(--accent); }
     .drive-contents { margin-top:24px; }
     .folder-list-view { display:flex; flex-direction:column; gap:10px; }
     .folder-list-view .folder-card {
@@ -235,11 +233,61 @@
     .bottom-tabs .selection-actions button:disabled { opacity:.4; cursor:not-allowed; }
     .bottom-tabs.action-mode .tab-buttons { display:none; }
     .bottom-tabs.action-mode .selection-actions { display:flex; }
-    .drive-shell .select-indicator { opacity:0; transition:opacity .2s ease; }
-    .drive-shell.selecting .select-indicator { opacity:1; }
+    .select-indicator {
+      width:22px;
+      height:22px;
+      border-radius:50%;
+      border:2px solid rgba(148,163,184,.5);
+      background:rgba(15,23,42,.85);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      flex:0 0 22px;
+      opacity:0;
+      transition:opacity .2s ease, background .2s ease, border-color .2s ease;
+    }
+    .select-indicator::after {
+      content:'';
+      width:8px;
+      height:4px;
+      border-left:2px solid transparent;
+      border-bottom:2px solid transparent;
+      transform:rotate(-45deg);
+      opacity:0;
+      transition:opacity .2s ease, border-color .2s ease;
+    }
+    .selected .select-indicator {
+      background:#22c55e;
+      border-color:#22c55e;
+    }
+    .selected .select-indicator::after {
+      border-color:#fff;
+      opacity:1;
+    }
+    .folder-card .select-indicator,
+    .album-media-card .select-indicator,
+    .album-card .select-indicator {
+      position:absolute;
+      top:10px;
+      right:10px;
+    }
+    .folder-list-view .folder-card .select-indicator {
+      position:static;
+      order:-1;
+      margin-right:12px;
+      flex:0 0 22px;
+    }
+    .drive-shell .select-indicator,
+    .album-shell .select-indicator,
+    .album-media-panel .select-indicator {
+      transition:opacity .2s ease;
+    }
+    .drive-shell.selecting .select-indicator,
+    .album-shell.album-selecting .select-indicator,
+    .album-media-panel.selecting .select-indicator {
+      opacity:1;
+    }
     .album-media-panel { margin-top:20px; position:relative; }
-    .album-media-panel .select-indicator { opacity:0; transition:opacity .2s ease; }
-    .album-media-panel.selecting .select-indicator { opacity:1; }
     .album-shell,
     .theme-shell { background: transparent; border-radius: 0; border:none; box-shadow:none; padding: 24px 0 40px; min-height: 60vh; }
     .photos-header { text-align:center; margin-bottom:16px; }
@@ -356,20 +404,6 @@
     .card video { pointer-events: none; }
     .album-media-card { border:none; background:transparent; padding:0; color:var(--text); text-align:left; display:block; width:100%; }
     .album-media-card .meta { border-top:1px solid rgba(148,163,184,.2); }
-    .album-media-card .select-indicator {
-      position:absolute;
-      top:10px;
-      right:10px;
-      width:20px;
-      height:20px;
-      border-radius:50%;
-      border:2px solid rgba(148,163,184,.45);
-      background:rgba(5,8,18,.5);
-    }
-    .album-media-card.selected .select-indicator {
-      background:var(--accent);
-      border-color:var(--accent);
-    }
     .media-flag {
       position:absolute;
       top:8px;
@@ -702,9 +736,6 @@
               <button class="album-grid-action" data-album-sort="name-desc"><img src="icons/sort-descending.png" alt="" class="inline-icon"> Name (Z→A)</button>
               <button class="album-grid-action" data-album-sort="created-desc">🆕 Newest</button>
               <button class="album-grid-action" data-album-sort="created-asc">🕰 Oldest</button>
-              <div class="dropdown-divider album-grid-action"></div>
-              <button class="album-grid-action" data-album-view="grid">⬚ Thumbnail View</button>
-              <button class="album-grid-action" data-album-view="list">☰ List View</button>
             </div>
           </div>
         </div>
@@ -1039,6 +1070,7 @@ const listPickerCancel = document.getElementById('listPickerCancel');
 let listPickerModalResolver = null;
 const listPickerPreviewUrls = [];
 const mediaUrlCache = new Map();
+const pendingPreviewIds = new Set();
 const modal = document.getElementById('albumModal');
 const albumModalTitle = document.getElementById('albumModalTitle');
 const albumForm = document.getElementById('albumForm');
@@ -1585,13 +1617,7 @@ function renderAlbumGrid() {
   const showingAlbums = !currentAlbumId;
   albumGridEl.classList.toggle('hidden', !showingAlbums);
   albumGridEl.classList.toggle('list-view', albumViewMode === 'list');
-  if (showingAlbums) {
-    albumMediaPanel?.classList.add('hidden');
-    albumBackBtn?.classList.add('hidden');
-    albumMoreBtn?.classList.remove('hidden');
-  } else {
-    albumMoreBtn?.classList.add('hidden');
-  }
+  albumBackBtn?.classList.toggle('hidden', showingAlbums);
   if (!showingAlbums) {
     visibleAlbumIds = [];
     albumEmptyEl?.classList.add('hidden');
@@ -1640,6 +1666,9 @@ function renderAlbumGrid() {
     const isSelected = selectedAlbums.has(album.id);
     card.className = 'album-card' + (isActive ? ' active' : '') + (isSelected ? ' selected' : '');
     card.dataset.albumId = String(album.id);
+    const selector = document.createElement('span');
+    selector.className = 'select-indicator';
+    card.appendChild(selector);
     const thumb = document.createElement('div');
     thumb.className = 'album-card-thumb';
     const preview = getAlbumPreviewMedia(album.id);
@@ -1698,7 +1727,6 @@ function renderAlbumGrid() {
 
   albumGridEl.appendChild(fragment);
   updateSelectionChrome();
-  updateSelectionIndicators();
 }
 
 function setActiveFolder(value) {
@@ -2068,6 +2096,8 @@ function updateSelectionChrome() {
     if (copyAlbumsToAlbumBtn) copyAlbumsToAlbumBtn.disabled = !hasAlbumSelection;
     if (deleteAlbumsBtn) deleteAlbumsBtn.disabled = !hasAlbumSelection;
   }
+  updateSelectionIndicators();
+  syncSelectionContainers();
 }
 
 async function handleBulkAction(action) {
@@ -2655,12 +2685,42 @@ function mediaCacheKey(item, variant) {
 function getThumbnailUrl(item) {
   const key = mediaCacheKey(item, 'thumb');
   if (!key) return null;
+  if (!item.previewBlob && item.kind !== 'text') {
+    schedulePreviewGeneration(item);
+  }
   if (mediaUrlCache.has(key)) return mediaUrlCache.get(key);
   const blobSource = item.previewBlob || (item.kind === 'text' ? null : item.blob);
   if (!blobSource) return null;
   const url = URL.createObjectURL(blobSource);
   mediaUrlCache.set(key, url);
   return url;
+}
+
+function schedulePreviewGeneration(item) {
+  if (!item || item.id == null || pendingPreviewIds.has(item.id)) return;
+  if (item.previewBlob || item.kind === 'text') return;
+  pendingPreviewIds.add(item.id);
+  (async () => {
+    try {
+      const previewData = await generatePreviewBlob(item.blob, item.kind, item.type);
+      if (previewData?.blob) {
+        item.previewBlob = previewData.blob;
+        item.previewWidth = previewData.width || 0;
+        item.previewHeight = previewData.height || 0;
+        await DB_READY;
+        await idbPut(db, STORE, item);
+        const key = mediaCacheKey(item, 'thumb');
+        if (key && mediaUrlCache.has(key)) {
+          URL.revokeObjectURL(mediaUrlCache.get(key));
+          mediaUrlCache.delete(key);
+        }
+      }
+    } catch (err) {
+      console.warn('Deferred preview generation failed', err);
+    } finally {
+      pendingPreviewIds.delete(item.id);
+    }
+  })();
 }
 
 function buildPickerPreviewPayload(item) {
@@ -2857,16 +2917,13 @@ async function refreshGallery() {
 
 function renderGallery() {
   const isDrive = activeTab === TAB_FOLDERS;
-  driveShellEl?.classList.toggle('selecting', selectionMode && activeTab === TAB_FOLDERS);
   if (activeTab === TAB_THEMES) {
     driveItemsEl.innerHTML = '';
     document.getElementById('emptyState')?.classList.add('hidden');
     albumMediaEl.innerHTML = '';
     albumMediaPanel?.classList.add('hidden');
     albumBackBtn?.classList.add('hidden');
-    albumMoreBtn?.classList.add('hidden');
     updateSelectionChrome();
-    updateSelectionIndicators();
     return;
   }
   const container = isDrive ? driveItemsEl : albumMediaEl;
@@ -2916,7 +2973,6 @@ function renderGallery() {
           : 'No media in <strong>' + emptyAlbumLabel.textContent + '</strong> yet.';
       }
       updateSelectionChrome();
-      updateSelectionIndicators();
       return;
     }
     driveEmpty?.classList.add('hidden');
@@ -2925,7 +2981,6 @@ function renderGallery() {
     mediaList.forEach((item, idx) => fragment.appendChild(createMediaTile(item, idx)));
     container.appendChild(fragment);
     updateSelectionChrome();
-    updateSelectionIndicators();
     return;
   }
 
@@ -2934,10 +2989,7 @@ function renderGallery() {
   driveEmpty?.classList.add('hidden');
   const viewingAlbum = !!currentAlbumId;
   albumMediaPanel?.classList.toggle('hidden', !viewingAlbum);
-  albumMediaPanel?.classList.toggle('selecting', selectionMode && viewingAlbum);
-  albumMediaPanel?.classList.toggle('selecting', selectionMode && viewingAlbum);
   albumBackBtn?.classList.toggle('hidden', !viewingAlbum);
-  albumMoreBtn?.classList.toggle('hidden', !viewingAlbum);
   if (viewingAlbum) visibleAlbumIds = [];
   if (!viewingAlbum) {
     albumMediaEmptyEl?.classList.add('hidden');
@@ -2945,7 +2997,6 @@ function renderGallery() {
     visibleFolderIds = [];
     visibleMediaIds = [];
     updateSelectionChrome();
-    updateSelectionIndicators();
     return;
   }
   const ids = albumMembership.get(currentAlbumId);
@@ -2955,7 +3006,6 @@ function renderGallery() {
     visibleFolderIds = [];
     visibleMediaIds = [];
     updateSelectionChrome();
-    updateSelectionIndicators();
     return;
   }
   visibleFolderIds = [];
@@ -3028,7 +3078,6 @@ function renderGallery() {
     container.appendChild(card);
   });
   updateSelectionChrome();
-  updateSelectionIndicators();
 }
 
 function sortPhotos(list) {
@@ -3287,8 +3336,7 @@ function handleViewChange(mode) {
 function toggleSelectionMode(force) {
   const next = typeof force === 'boolean' ? force : !selectionMode;
   if (next === selectionMode) {
-    driveShellEl?.classList.toggle('selecting', selectionMode && activeTab === TAB_FOLDERS);
-    albumMediaPanel?.classList.toggle('selecting', selectionMode && activeTab === TAB_ALBUMS && currentAlbumId);
+    updateSelectionChrome();
     return;
   }
   if (!next) {
@@ -3297,10 +3345,7 @@ function toggleSelectionMode(force) {
     selectedAlbums.clear();
   }
   selectionMode = next;
-  driveShellEl?.classList.toggle('selecting', selectionMode && activeTab === TAB_FOLDERS);
-  albumMediaPanel?.classList.toggle('selecting', selectionMode && activeTab === TAB_ALBUMS && currentAlbumId);
   updateSelectionChrome();
-  updateSelectionIndicators();
 }
 
 function selectAllVisible() {
@@ -3309,7 +3354,6 @@ function selectAllVisible() {
     if (!selectionMode) toggleSelectionMode(true);
     selectedAlbums = new Set(visibleAlbumIds);
     updateSelectionChrome();
-    updateSelectionIndicators();
     return;
   }
   const hasAny = visibleFolderIds.length || visibleMediaIds.length;
@@ -3323,7 +3367,6 @@ function selectAllVisible() {
   selectedFolders = new Set(visibleFolderIds);
   selectedMedia = new Set(visibleMediaIds);
   updateSelectionChrome();
-  updateSelectionIndicators();
 }
 
 function handleAlbumSort(mode) {
@@ -3381,6 +3424,15 @@ function syncAlbumMediaSelectionIndicators() {
       card.classList.toggle('selected', selectedMedia.has(id));
     }
   });
+}
+
+function syncSelectionContainers() {
+  const driveSelecting = selectionMode && activeTab === TAB_FOLDERS;
+  const albumGridSelecting = selectionMode && activeTab === TAB_ALBUMS && !currentAlbumId;
+  const albumMediaSelecting = selectionMode && activeTab === TAB_ALBUMS && !!currentAlbumId;
+  driveShellEl?.classList.toggle('selecting', driveSelecting);
+  albumShellEl?.classList.toggle('album-selecting', albumGridSelecting);
+  albumMediaPanel?.classList.toggle('selecting', albumMediaSelecting);
 }
 
 function onViewerPointerDown(e) {
