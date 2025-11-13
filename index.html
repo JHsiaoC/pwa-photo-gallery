@@ -734,8 +734,8 @@
               <div class="dropdown-divider album-grid-action"></div>
               <button class="album-grid-action" data-album-sort="name-asc"><img src="icons/sort-ascending.png" alt="" class="inline-icon"> Name (A→Z)</button>
               <button class="album-grid-action" data-album-sort="name-desc"><img src="icons/sort-descending.png" alt="" class="inline-icon"> Name (Z→A)</button>
-              <button class="album-grid-action" data-album-sort="created-desc">🆕 Newest</button>
-              <button class="album-grid-action" data-album-sort="created-asc">🕰 Oldest</button>
+              <button class="album-grid-action" data-album-sort="created-desc"><img src="icons/newest.png" alt="" class="inline-icon"> Newest (creation)</button>
+              <button class="album-grid-action" data-album-sort="created-asc"><img src="icons/oldest.png" alt="" class="inline-icon"> Oldest (creation)</button>
             </div>
           </div>
         </div>
@@ -2187,11 +2187,10 @@ async function bulkDeleteSelected() {
 async function bulkAddToAlbumSelected() {
   const items = getSelectedMediaItems();
   if (!items.length) return alert('Select media first.');
-  let albumId = currentAlbumId;
-  if (!albumId) {
-    albumId = await pickAlbumDestination();
-  }
-  if (albumId === undefined) return;
+  const choice = await pickAlbumDestination();
+  if (choice === undefined || choice === null) return;
+  const albumId = Number(choice);
+  if (!Number.isFinite(albumId)) return;
   const membership = albumMembership.get(albumId) || new Set();
   for (const item of items) {
     if (membership.has(item.id)) continue;
