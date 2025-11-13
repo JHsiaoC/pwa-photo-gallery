@@ -146,6 +146,13 @@
       pointer-events:none;
       filter: var(--icon-filter);
     }
+    .tab-icon {
+      width:20px;
+      height:20px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
     .menu-icon { width:18px; height:18px; margin-right:8px; display:inline-flex; }
     .list-icon { width:20px; height:20px; margin-right:10px; display:inline-flex; align-items:center; justify-content:center; }
     .list-icon img { width:100%; height:100%; object-fit:contain; }
@@ -4068,15 +4075,3 @@ async function exportZip() {
 </script>
 </body>
 </html>
-    .tab-icon { width:20px; height:20px; display:flex; align-items:center; justify-content:center; }
-    .tab-icon img { width:18px; height:18px; object-fit:contain; filter:var(--icon-filter); }
-    .picker-list { display:flex; flex-direction:column; gap:8px; max-height:50vh; overflow-y:auto; margin-top:12px; }
-    .picker-list button { width:100%; text-align:left; padding:10px 14px; border-radius:12px; border:1px solid rgba(148,163,184,.25); background:rgba(15,23,42,.75); color:var(--text); font-weight:600; }
-    .picker-list button:hover { border-color:var(--accent); }
-    .album-shell {
-      background: transparent;
-      border:none;
-      box-shadow:none;
-      padding: 0;
-      min-height: 60vh;
-    }
