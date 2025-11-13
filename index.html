@@ -2284,8 +2284,12 @@ async function bulkDeleteSelected() {
   if (!items.length && !folderIds.length && !albumIds.length) return alert('Select something to delete.');
   const total = items.length + folderIds.length + albumIds.length;
   if (!confirm(`Delete ${total} selected item(s)? This cannot be undone.`)) return;
+  const mediaIds = items.map(item => item.id);
   for (const item of items) {
     await idbDelete(db, STORE, item.id);
+  }
+  if (mediaIds.length) {
+    await removeMediaFromAlbums(mediaIds);
   }
   if (folderIds.length) {
     await deleteFoldersByIds(folderIds);
@@ -3638,6 +3642,25 @@ function syncSelectionContainers() {
   driveShellEl?.classList.toggle('selecting', driveSelecting);
   albumShellEl?.classList.toggle('album-selecting', albumGridSelecting);
   albumMediaPanel?.classList.toggle('selecting', albumMediaSelecting);
+}
+
+async function removeMediaFromAlbums(photoIds) {
+  if (!photoIds?.length) return;
+  const tasks = [];
+  for (const [albumId, set] of albumMembership.entries()) {
+    let changed = false;
+    for (const pid of photoIds) {
+      if (set.has(pid)) {
+        set.delete(pid);
+        changed = true;
+        tasks.push(idbDelete(db, COLLECTION_ITEMS_STORE, `${albumId}-${pid}`));
+      }
+    }
+    if (changed && set.size === 0 && currentAlbumId === albumId && activeTab === TAB_ALBUMS) {
+      albumMediaEmptyEl?.classList.remove('hidden');
+    }
+  }
+  if (tasks.length) await Promise.allSettled(tasks);
 }
 
 function onViewerPointerDown(e) {
