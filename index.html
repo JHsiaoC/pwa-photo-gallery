@@ -173,7 +173,20 @@
     .drive-section { margin-top:20px; }
     .drive-section h3 { margin:0 0 12px; font-size:16px; color:var(--muted); text-transform:uppercase; letter-spacing:.2em; }
     .folder-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(240px,1fr)); gap:12px; }
-    .folder-card { position:relative; background:rgba(15,23,42,.8); border:1px solid rgba(148,163,184,.2); padding:16px; border-radius:20px; min-height:140px; display:flex; flex-direction:column; justify-content:space-between; cursor:pointer; }
+    .folder-card {
+      position:relative;
+      background:rgba(15,23,42,.8);
+      border:1px solid rgba(148,163,184,.2);
+      padding:18px;
+      border-radius:24px;
+      min-height:0;
+      aspect-ratio:1;
+      display:flex;
+      flex-direction:column;
+      justify-content:flex-start;
+      gap:8px;
+      cursor:pointer;
+    }
     .folder-card.active { border-color: var(--accent); }
     .folder-card .name { font-weight:600; font-size:16px; }
     .folder-card .count { font-size:12px; color:var(--muted); }
@@ -181,7 +194,14 @@
     .folder-card.selected .select-indicator { background:var(--accent); border-color:var(--accent); }
     .drive-contents { margin-top:24px; }
     .folder-list-view { display:flex; flex-direction:column; gap:10px; }
-    .folder-list-view .folder-card { flex-direction:row; align-items:center; min-height:60px; padding:10px 16px; gap:12px; }
+    .folder-list-view .folder-card {
+      flex-direction:row;
+      align-items:center;
+      min-height:60px;
+      padding:10px 16px;
+      gap:12px;
+      aspect-ratio:auto;
+    }
     .folder-list-view .folder-card .name { font-size:15px; }
     .folder-list-view .folder-card .count { font-size:12px; }
     .folder-list-view .folder-card .select-indicator { position:static; order: -1; }
